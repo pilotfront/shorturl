@@ -1,4 +1,4 @@
-const express = require('express');
+ow to fecth urls by password using this verscel index.js: const express = require('express');
 const { nanoid } = require('nanoid');
 const cors = require('cors');
 
@@ -80,14 +80,6 @@ app.post('/list', (req, res) => {
 
   res.json(urls);
 });
-
-
-
-
-
-
-
-  
 
 // Start the server
 module.exports = app;
