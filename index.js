@@ -1,15 +1,15 @@
 const express = require('express');
 const { nanoid } = require('nanoid');
-const cors = require('cors');  // Import the CORS package
+const cors = require('cors');  // Import the cors package
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 const urlDatabase = {};  // In-memory storage for short URLs
 
-// Enable CORS middleware with Webflow origin (or any domain you want to allow)
+// Use CORS middleware
 app.use(cors({
-  origin: 'https://www.pilotfront.com',  // Replace with your Webflow domain
+  origin: 'https://www.pilotfront.com',  // Replace with your domain
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type'],
 }));
@@ -31,7 +31,7 @@ app.post('/shorten', (req, res) => {
   }
 
   const shortId = nanoid(6); // Create a unique ID for the URL
-  urlDatabase[shortId] = originalUrl;  // Save the original URL in the database
+  urlDatabase[shortId] = originalUrl;  // Save in-memory database
 
   // Send back the shortened URL
   res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
