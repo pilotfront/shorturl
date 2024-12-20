@@ -5,8 +5,15 @@ const cors = require('cors');
 const app = express();
 const urlDatabase = {}; // In-memory storage for shortened URLs
 
+// Enable CORS for specific domains
+const corsOptions = {
+  origin: 'https://www.pilotfront.com', // Allow requests only from your Webflow domain
+  methods: 'GET,POST', // Allowed HTTP methods
+  allowedHeaders: 'Content-Type', // Allowed headers
+};
+
 // Middleware
-app.use(cors()); // Enable CORS
+app.use(cors(corsOptions)); // Apply CORS settings
 app.use(express.json()); // Parse JSON body
 
 // Home Route
@@ -31,11 +38,11 @@ app.post('/shorten', (req, res) => {
     clicks: 0,
   };
 
-  res.json({ shortUrl: https://${req.headers.host}/${shortId} });
+  res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
 });
 
 // Redirect to the original URL
-app.get('(req, res) => {
+app.get( (req, res) => {
   const { shortId } = req.params;
   const entry = urlDatabase[shortId];
 
@@ -50,7 +57,7 @@ app.get('(req, res) => {
   // Redirect to the original URL
   const originalUrl = entry.originalUrl.startsWith('http') 
     ? entry.originalUrl 
-    : https://${entry.originalUrl};
+    : `https://${entry.originalUrl}`;
   
   res.redirect(originalUrl);
 });
@@ -73,9 +80,6 @@ app.post('/list', (req, res) => {
 
   res.json(urls);
 });
-
-
-
 
 // Start the server
 module.exports = app;
