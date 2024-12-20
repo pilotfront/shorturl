@@ -3,18 +3,15 @@ const { nanoid } = require('nanoid');
 const cors = require('cors');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const urlDatabase = {}; // In-memory storage for shortened URLs
 
-// In-memory storage for shortened URLs and metadata
-const urlDatabase = {};
+// Middleware
+app.use(cors()); // Enable CORS
+app.use(express.json()); // Parse JSON body
 
-// Enable CORS to allow requests from Webflow
-app.use(cors());
-app.use(express.json()); // Parse JSON request bodies
-
-// Root Route
+// Home Route
 app.get('/', (req, res) => {
-  res.send('<h1>Welcome to the URL Shortener!</h1><p>Use POST /shorten to shorten a URL.</p>');
+  res.send('<h1>URL Shortener</h1><p>Use POST /shorten to create a short URL.</p>');
 });
 
 // Shorten a URL
@@ -26,7 +23,7 @@ app.post('/shorten', (req, res) => {
     return res.status(400).json({ error: 'You must provide a URL and a password!' });
   }
 
-  // Generate a short ID and save the data
+  // Generate short ID and save to database
   const shortId = nanoid(6);
   urlDatabase[shortId] = {
     originalUrl,
@@ -34,29 +31,40 @@ app.post('/shorten', (req, res) => {
     clicks: 0,
   };
 
-  // Respond with the shortened URL
   res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
 });
 
-// Redirect to the original URL
+// Redirect to Original URL
 app.get('/:shortId', (req, res) => {
   const { shortId } = req.params;
   const entry = urlDatabase[shortId];
 
   if (!entry) {
-    return res.status(404).json({ error: 'URL not found!' });
+    return res.status(404).send('<h1>404 Not Found</h1>');
   }
 
-  // Increment the click count and redirect
   entry.clicks++;
   res.redirect(entry.originalUrl);
 });
 
-// Start the server (only for local testing; not needed for serverless deployment)
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
-  });
-}
+// Fetch URLs by Password
+app.post('/list', (req, res) => {
+  const { password } = req.body;
 
+  if (!password) {
+    return res.status(400).json({ error: 'Password is required!' });
+  }
+
+  const urls = Object.entries(urlDatabase)
+    .filter(([key, value]) => value.password === password)
+    .map(([shortId, data]) => ({
+      shortId,
+      originalUrl: data.originalUrl,
+      clicks: data.clicks,
+    }));
+
+  res.json(urls);
+});
+
+// Start the server
 module.exports = app;
