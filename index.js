@@ -1,14 +1,16 @@
 const express = require('express');
-const cors = require('cors');
 const { nanoid } = require('nanoid');
+const cors = require('cors');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors());  // This allows cross-origin requests
-app.use(express.json());  // Allow the server to handle JSON data
+// In-memory storage for shortened URLs and metadata
+const urlDatabase = {};
 
-const urlDatabase = {};  // In-memory storage for short URLs
+// Enable CORS to allow requests from Webflow
+app.use(cors());
+app.use(express.json()); // Parse JSON request bodies
 
 // Root Route
 app.get('/', (req, res) => {
@@ -19,32 +21,42 @@ app.get('/', (req, res) => {
 app.post('/shorten', (req, res) => {
   const { originalUrl, password } = req.body;
 
-  // Check if the originalUrl and password are provided
+  // Validate input
   if (!originalUrl || !password) {
     return res.status(400).json({ error: 'You must provide a URL and a password!' });
   }
 
-  const shortId = nanoid(6); // Create a unique ID for the URL
-  urlDatabase[shortId] = { originalUrl, password };  // Save the original URL and password
+  // Generate a short ID and save the data
+  const shortId = nanoid(6);
+  urlDatabase[shortId] = {
+    originalUrl,
+    password,
+    clicks: 0,
+  };
 
-  // Send back the shortened URL
+  // Respond with the shortened URL
   res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
 });
 
 // Redirect to the original URL
 app.get('/:shortId', (req, res) => {
   const { shortId } = req.params;
-  const urlData = urlDatabase[shortId];
+  const entry = urlDatabase[shortId];
 
-  if (!urlData) {
+  if (!entry) {
     return res.status(404).json({ error: 'URL not found!' });
   }
 
-  // Redirect to the original URL
-  res.redirect(urlData.originalUrl);
+  // Increment the click count and redirect
+  entry.clicks++;
+  res.redirect(entry.originalUrl);
 });
 
-// Start the server
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
-});
+// Start the server (only for local testing; not needed for serverless deployment)
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+  });
+}
+
+module.exports = app;
