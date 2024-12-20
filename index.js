@@ -1,19 +1,20 @@
 const express = require('express');
 const { nanoid } = require('nanoid');
-const cors = require('cors');
+const cors = require('cors'); // Import the cors package
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// In-memory storage for short URLs, each URL is associated with a user password
-let urlDatabase = {};  // Format: { password: [{shortId, originalUrl, shortUrl, clicks}] }
+const urlDatabase = {};  // In-memory storage for short URLs
 
+// Use CORS middleware
 app.use(cors({
-  origin: 'https://www.pilotfront.com',  // Replace with your Webflow domain
-  methods: ['GET', 'POST', 'DELETE'],
+  origin: 'https://www.pilotfront.com', // Replace with your Webflow domain
+  methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type'],
 }));
-app.use(express.json());
+
+app.use(express.json());  // Allow the server to handle JSON data
 
 // Root Route
 app.get('/', (req, res) => {
@@ -24,81 +25,77 @@ app.get('/', (req, res) => {
 app.post('/shorten', (req, res) => {
   const { originalUrl, password } = req.body;
 
+  // Check if the originalUrl and password are provided
   if (!originalUrl || !password) {
-    return res.status(400).json({ error: 'You must provide a URL and password!' });
+    return res.status(400).json({ error: 'You must provide a URL and a password!' });
   }
 
-  const shortId = nanoid(6);  // Create a unique ID for the URL
-  const shortUrl = `https://${req.headers.host}/${shortId}`;
+  const shortId = nanoid(6); // Create a unique ID for the URL
 
-  // Initialize the user’s URL database if not already
-  if (!urlDatabase[password]) {
-    urlDatabase[password] = [];
-  }
-
-  // Add the shortened URL to the user's list
-  urlDatabase[password].push({
+  // Store URL with password and click count (initially 0)
+  urlDatabase[shortId] = {
     originalUrl,
-    shortId,
-    shortUrl,
-    clicks: 0
-  });
+    password,
+    clickCount: 0,
+  };
 
-  res.json({ shortUrl });
+  // Send back the shortened URL
+  res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
 });
 
-// Redirect to the original URL
+// Redirect to the original URL and track clicks
 app.get('/:shortId', (req, res) => {
   const { shortId } = req.params;
-  let originalUrl;
+  const urlData = urlDatabase[shortId];
 
-  // Search through each user's list of URLs
-  for (const [password, urls] of Object.entries(urlDatabase)) {
-    const url = urls.find(item => item.shortId === shortId);
-    if (url) {
-      originalUrl = url.originalUrl;
-      url.clicks += 1;  // Increment click count
-      break;
-    }
-  }
-
-  if (!originalUrl) {
+  if (!urlData) {
     return res.status(404).json({ error: 'URL not found!' });
   }
 
-  res.redirect(originalUrl);
+  // Increment click count
+  urlData.clickCount++;
+
+  // Redirect to the original URL
+  res.redirect(urlData.originalUrl);
 });
 
-// View shortened URLs and clicks by password
-app.post('/view', (req, res) => {
+// List URLs for a specific user (password protected)
+app.post('/list', (req, res) => {
   const { password } = req.body;
 
-  if (!password || !urlDatabase[password]) {
-    return res.status(404).json({ error: 'Incorrect password or no URLs found.' });
+  // Filter URLs by password
+  const userUrls = Object.entries(urlDatabase)
+    .filter(([id, data]) => data.password === password)
+    .map(([id, data]) => ({
+      shortUrl: `https://${req.headers.host}/${id}`,
+      originalUrl: data.originalUrl,
+      clickCount: data.clickCount,
+    }));
+
+  if (userUrls.length === 0) {
+    return res.status(404).json({ error: 'No URLs found for this password.' });
   }
 
-  res.json({ urls: urlDatabase[password] });
+  res.json(userUrls);
 });
 
-// Delete a shortened URL by password and shortId
-app.delete('/delete', (req, res) => {
+// Delete a URL
+app.post('/delete', (req, res) => {
   const { password, shortId } = req.body;
 
-  if (!password || !shortId || !urlDatabase[password]) {
-    return res.status(400).json({ error: 'Password or short URL ID is missing!' });
-  }
+  const urlData = urlDatabase[shortId];
 
-  const userUrls = urlDatabase[password];
-  const index = userUrls.findIndex(item => item.shortId === shortId);
-
-  if (index === -1) {
+  if (!urlData) {
     return res.status(404).json({ error: 'URL not found!' });
   }
 
-  // Delete the URL from the user's list
-  userUrls.splice(index, 1);
+  if (urlData.password !== password) {
+    return res.status(403).json({ error: 'Incorrect password.' });
+  }
 
-  res.json({ message: 'URL deleted successfully' });
+  delete urlDatabase[shortId];
+
+  res.json({ message: 'URL deleted successfully.' });
 });
 
 // Start the server
