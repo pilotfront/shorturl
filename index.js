@@ -45,6 +45,31 @@ app.get('/:shortId', (req, res) => {
   res.redirect(originalUrl);
 });
 
+
+// List shortened URLs for a given password
+app.post('/list', (req, res) => {
+  const { password } = req.body;
+
+  if (!password) {
+    return res.status(400).json({ error: 'You must provide a password!' });
+  }
+
+  // Retrieve the URLs associated with the given password
+  const userUrls = Object.entries(urlDatabase).filter(([shortId, urlData]) => urlData.password === password);
+
+  if (userUrls.length === 0) {
+    return res.status(404).json({ error: 'No URLs found for this password!' });
+  }
+
+  // Send back the list of shortened URLs
+  res.json({ urls: userUrls.map(([shortId, urlData]) => ({
+    shortUrl: `https://${req.headers.host}/${shortId}`,
+    originalUrl: urlData.originalUrl,
+    clicks: urlData.clicks || 0
+  })) });
+});
+
+
 // Start the server
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
