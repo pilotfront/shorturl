@@ -2,6 +2,7 @@ const express = require('express');
 const { nanoid } = require('nanoid');
 
 const app = express();
+app.use(cors()); 
 const port = process.env.PORT || 3000;
 
 const urlDatabase = {};  // In-memory storage for short URLs
