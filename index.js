@@ -38,7 +38,7 @@ app.post('/shorten', (req, res) => {
     clicks: 0,
   };
 
-  res.json({ shortUrl: https://${req.headers.host}/${shortId} });
+  res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
 });
 
 // Redirect to the original URL
@@ -57,7 +57,7 @@ app.get('/:shortId', (req, res) => {
   // Redirect to the original URL
   const originalUrl = entry.originalUrl.startsWith('http') 
     ? entry.originalUrl 
-    : https://${entry.originalUrl};
+    : `https://${entry.originalUrl}`;
   
   res.redirect(originalUrl);
 });
@@ -103,4 +103,4 @@ app.delete('/delete/:shortId', (req, res) => {
 
 
 // Start the server
-module.exports = app; 
+module.exports = app;
