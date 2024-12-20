@@ -8,7 +8,7 @@ const urlDatabase = {}; // In-memory storage for shortened URLs
 // Enable CORS for specific domains
 const corsOptions = {
   origin: 'https://www.pilotfront.com', // Allow requests only from your Webflow domain
-  methods: 'GET,POST,DELETE'', // Allowed HTTP methods
+  methods: 'GET,POST', // Allowed HTTP methods
   allowedHeaders: 'Content-Type', // Allowed headers
 };
 
@@ -38,7 +38,7 @@ app.post('/shorten', (req, res) => {
     clicks: 0,
   };
 
-  res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
+  res.json({ shortUrl: https://${req.headers.host}/${shortId} });
 });
 
 // Redirect to the original URL
@@ -57,7 +57,7 @@ app.get('/:shortId', (req, res) => {
   // Redirect to the original URL
   const originalUrl = entry.originalUrl.startsWith('http') 
     ? entry.originalUrl 
-    : `https://${entry.originalUrl}`;
+    : https://${entry.originalUrl};
   
   res.redirect(originalUrl);
 });
@@ -82,6 +82,7 @@ app.post('/list', (req, res) => {
 });
 
 
+
 // Delete a URL by shortId
 app.delete('/delete/:shortId', (req, res) => {
   const { shortId } = req.params;
@@ -98,6 +99,9 @@ app.delete('/delete/:shortId', (req, res) => {
 });
 
 
+
+
+  
 
 // Start the server
 module.exports = app;
