@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Shortened URLs</title>
+  <style>
+    body {
+      background-color: #f8f9fa;
+      color: #495057;
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      background-color: #fff;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 600px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+      color: #343a40;
+      font-weight: 500;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    li {
+      background-color: #f1f3f5;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    button {
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #c82333;
+    }
+  </style>
+  <script>
+    async function fetchUrls() {
+      const response = await fetch('/urls');
+      const urls = await response.json();
+      const urlList = document.getElementById('urlList');
+      urlList.innerHTML = '';
+      for (const [id, data] of Object.entries(urls)) {
+        const listItem = document.createElement('li');
+        listItem.textContent = `Short URL: ${data.shortUrl} (Original URL: ${data.originalUrl})`;
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Delete';
+        deleteButton.onclick = () => deleteUrl(id);
+        listItem.appendChild(deleteButton);
+        urlList.appendChild(listItem);
+      }
+    }
+
+    async function deleteUrl(id) {
+      const response = await fetch(`/delete/${id}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (data.success) {
+        alert(data.message);
+        fetchUrls();  // Refresh the list after deletion
+      } else {
+        alert('Error deleting URL');
+      }
+    }
+
+    window.onload = fetchUrls;
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>Manage Shortened URLs</h1>
+    <ul id="urlList"></ul>
+  </div>
+</body>
+</html>
