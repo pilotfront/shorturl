@@ -15,12 +15,4 @@
 }
 
 
-{
-  "redirects": [
-    {
-      "source": "/",
-      "destination": "https://www.pilotfront.com",
-      "permanent": true
-    }
-  ]
-}
+
