@@ -8,6 +8,10 @@ const urlDatabase = {};  // In-memory storage for short URLs
 
 app.use(express.json());  // Allow the server to handle JSON data
 
+const cors = require('cors');
+app.use(cors());
+
+
 // Root Route
 app.get('/', (req, res) => {
   res.send('<h1>Welcome to the URL Shortener!</h1><p>Use POST /shorten to shorten a URL.</p>');
