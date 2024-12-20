@@ -34,17 +34,25 @@ app.post('/shorten', (req, res) => {
   res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
 });
 
-// Redirect to Original URL
+// Redirect to the original URL
 app.get('/:shortId', (req, res) => {
   const { shortId } = req.params;
   const entry = urlDatabase[shortId];
 
+  // Check if the entry exists
   if (!entry) {
     return res.status(404).send('<h1>404 Not Found</h1>');
   }
 
+  // Increment click count
   entry.clicks++;
-  res.redirect(entry.originalUrl);
+
+  // Redirect to the original URL
+  const originalUrl = entry.originalUrl.startsWith('http') 
+    ? entry.originalUrl 
+    : `https://${entry.originalUrl}`;
+  
+  res.redirect(originalUrl);
 });
 
 // Fetch URLs by Password
