@@ -2,6 +2,8 @@ const express = require('express');
 const fs = require('fs');
 const bodyParser = require('body-parser');
 const path = require('path');
+// Enable CORS for all origins
+app.use(cors());
 
 const app = express();
 const dataPath = path.join(__dirname, 'urls.json');
