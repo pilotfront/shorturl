@@ -5,16 +5,16 @@ const cors = require('cors');
 const app = express();
 const urlDatabase = {}; // In-memory storage for shortened URLs
 
-// Enable CORS for specific domains
+// Enable CORS for specific domains and methods
 const corsOptions = {
   origin: 'https://www.pilotfront.com', // Allow requests only from your Webflow domain
-  methods: 'GET,POST', // Allowed HTTP methods
+  methods: 'GET,POST,DELETE', // Allow DELETE method in addition to GET and POST
   allowedHeaders: 'Content-Type', // Allowed headers
 };
 
 // Middleware
 app.use(cors(corsOptions)); // Apply CORS settings
-app.use(express.json()); // Parse JSON body
+
 
 // Home Route
 app.get('/', (req, res) => {
