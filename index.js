@@ -16,8 +16,8 @@ app.get('/', (req, res) => {
 // Shorten a URL
 app.post('/shorten', (req, res) => {
   const { originalUrl } = req.body;
-  
-  // Validate that the originalUrl is provided
+
+  // Check if the originalUrl is provided
   if (!originalUrl) {
     return res.status(400).json({ error: 'You must provide a URL!' });
   }
