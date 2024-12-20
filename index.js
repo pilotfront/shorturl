@@ -1,4 +1,4 @@
-ow to fecth urls by password using this verscel index.js: const express = require('express');
+const express = require('express');
 const { nanoid } = require('nanoid');
 const cors = require('cors');
 
