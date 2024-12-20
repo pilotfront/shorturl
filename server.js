@@ -1,16 +1,14 @@
 const express = require('express');
 const fs = require('fs');
 const bodyParser = require('body-parser');
-const cors = require('cors');
 const path = require('path');
 
 const app = express();
-const dataPath = './.data/urls.json';
+const dataPath = path.join(__dirname, 'urls.json');
 
 // Middleware
-app.use(cors());  // Allow all origins (You can adjust the configuration to limit allowed origins)
-app.use(bodyParser.json());  // Parse incoming JSON requests
-app.use(express.static('public'));  // Serve static files (HTML, CSS, JS)
+app.use(bodyParser.json());
+app.use(express.static('public')); // Serve static files (HTML, CSS, JS)
 
 // Function to generate a 3-character random string for shortening
 const generateShortId = () => {
@@ -39,9 +37,6 @@ const loadUrls = () => {
 // Save URLs to the JSON file
 const saveUrls = (data) => {
   try {
-    if (!fs.existsSync(dataPath)) {
-      fs.writeFileSync(dataPath, '{}', 'utf-8'); // Initialize the file if it doesn't exist
-    }
     fs.writeFileSync(dataPath, JSON.stringify(data, null, 2), 'utf-8');
     console.log('URLs saved successfully to urls.json');
   } catch (error) {
@@ -52,8 +47,6 @@ const saveUrls = (data) => {
 // API to shorten a URL
 app.post('/shorten', (req, res) => {
   const { originalUrl } = req.body;
-
-  console.log('Received URL:', originalUrl);  // Log the received URL
 
   if (!originalUrl) {
     return res.status(400).json({ error: 'Original URL is required' });
@@ -66,16 +59,17 @@ app.post('/shorten', (req, res) => {
     id = generateShortId();
   } while (urls[id]); // Ensure the ID is unique
 
-  urls[id] = { originalUrl, shortUrl: `${req.protocol}://${req.get('host')}/${id}` };  // Store the URL object with both URLs
-  saveUrls(urls);  // Save to file
+  const shortUrl = `https://${req.get('host')}/${id}`; // Uses the default Vercel domain
+  urls[id] = { originalUrl, shortUrl }; // Store the URL object with both URLs
+  saveUrls(urls); // Save to file
 
-  res.json({ shortUrl: `${req.protocol}://${req.get('host')}/${id}` });
+  res.json({ shortUrl });
 });
 
-// API to get all shortened URLs (for delete.html)
+// API to retrieve all shortened URLs
 app.get('/urls', (req, res) => {
   const urls = loadUrls();
-  res.json(urls);  // Send all URLs to the client
+  res.json(urls);
 });
 
 // API to delete a URL by its short ID
@@ -84,8 +78,8 @@ app.delete('/delete/:id', (req, res) => {
   const urls = loadUrls();
 
   if (urls[id]) {
-    delete urls[id];  // Delete the URL
-    saveUrls(urls);  // Save the updated list
+    delete urls[id];
+    saveUrls(urls); // Save the updated list
     res.json({ success: true, message: `URL with ID ${id} deleted` });
   } else {
     res.status(404).json({ error: `URL with ID ${id} not found` });
@@ -108,3 +102,4 @@ const listener = app.listen(process.env.PORT || 3000, () => {
   console.log(`Your app is listening on port ${listener.address().port}`);
 });
 
+module.exports = app;
