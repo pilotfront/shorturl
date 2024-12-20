@@ -16,15 +16,17 @@ app.get('/', (req, res) => {
 // Shorten a URL
 app.post('/shorten', (req, res) => {
   const { originalUrl } = req.body;
+  
+  // Validate that the originalUrl is provided
   if (!originalUrl) {
-    return res.status(400).send('You must provide a URL!');
+    return res.status(400).json({ error: 'You must provide a URL!' });
   }
 
   const shortId = nanoid(6); // Create a unique ID for the URL
   urlDatabase[shortId] = originalUrl;  // Save the original URL in the database
 
   // Send back the shortened URL
-  res.send({ shortUrl: `https://${req.headers.host}/${shortId}` });
+  res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
 });
 
 // Redirect to the original URL
