@@ -92,9 +92,10 @@ app.get('/:id', (req, res) => {
   const originalUrl = urls[req.params.id]?.originalUrl;
 
   if (originalUrl) {
-    res.redirect(originalUrl);
+    console.log(`Redirecting to: ${originalUrl}`);
+    return res.redirect(originalUrl);  // This should properly handle redirection
   } else {
-    res.status(404).send('URL not found');
+    return res.status(404).send('URL not found');
   }
 });
 
