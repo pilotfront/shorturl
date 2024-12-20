@@ -1,15 +1,20 @@
 const express = require('express');
 const { nanoid } = require('nanoid');
+const cors = require('cors');  // Import the CORS package
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 const urlDatabase = {};  // In-memory storage for short URLs
 
+// Enable CORS middleware with Webflow origin (or any domain you want to allow)
+app.use(cors({
+  origin: 'https://www.pilotfront.com',  // Replace with your Webflow domain
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type'],
+}));
+
 app.use(express.json());  // Allow the server to handle JSON data
-
-
-
 
 // Root Route
 app.get('/', (req, res) => {
