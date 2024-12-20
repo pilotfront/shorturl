@@ -35,7 +35,7 @@ app.post('/shorten', (req, res) => {
 });
 
 // Redirect to the original URL
-app.get('/:shortId', (req, res) => {
+app.get('(req, res) => {
   const { shortId } = req.params;
   const entry = urlDatabase[shortId];
 
