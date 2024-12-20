@@ -23,11 +23,11 @@ app.get('/', (req, res) => {
 
 // Shorten a URL
 app.post('/shorten', (req, res) => {
-  const { originalUrl, password } = req.body;
+  const { originalUrl, password, username } = req.body;
 
   // Validate input
-  if (!originalUrl || !password) {
-    return res.status(400).json({ error: 'You must provide a URL and a password!' });
+  if (!originalUrl || !password || !username) {
+    return res.status(400).json({ error: 'URL, password, and username are required!' });
   }
 
   // Generate short ID and save to database
@@ -35,43 +35,23 @@ app.post('/shorten', (req, res) => {
   urlDatabase[shortId] = {
     originalUrl,
     password,
+    username, // Save username along with other data
     clicks: 0,
   };
 
   res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
 });
 
-// Redirect to the original URL
-app.get('/:shortId', (req, res) => {
-  const { shortId } = req.params;
-  const entry = urlDatabase[shortId];
-
-  // Check if the entry exists
-  if (!entry) {
-    return res.status(404).send('<h1>404 Not Found</h1>');
-  }
-
-  // Increment click count
-  entry.clicks++;
-
-  // Redirect to the original URL
-  const originalUrl = entry.originalUrl.startsWith('http') 
-    ? entry.originalUrl 
-    : `https://${entry.originalUrl}`;
-  
-  res.redirect(originalUrl);
-});
-
-// Fetch URLs by Password
+// Fetch URLs by Password and Username
 app.post('/list', (req, res) => {
-  const { password } = req.body;
+  const { password, username } = req.body;
 
-  if (!password) {
-    return res.status(400).json({ error: 'Password is required!' });
+  if (!password || !username) {
+    return res.status(400).json({ error: 'Password and username are required!' });
   }
 
   const urls = Object.entries(urlDatabase)
-    .filter(([key, value]) => value.password === password)
+    .filter(([key, value]) => value.password === password && value.username === username)
     .map(([shortId, data]) => ({
       shortId,
       originalUrl: data.originalUrl,
@@ -80,7 +60,6 @@ app.post('/list', (req, res) => {
 
   res.json(urls);
 });
-
 
 // Delete a URL by shortId
 app.delete('/delete/:shortId', (req, res) => {
@@ -96,11 +75,6 @@ app.delete('/delete/:shortId', (req, res) => {
 
   res.json({ message: 'URL deleted successfully' });
 });
-
-
-
-
-
 
 // Start the server
 module.exports = app;
