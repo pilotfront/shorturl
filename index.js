@@ -4,11 +4,23 @@ const { nanoid } = require("nanoid");
 const app = express();
 const port = process.env.PORT || 3000;
 
-const urlDatabase = {}; // In-memory database for simplicity
+const urlDatabase = {}; // In-memory storage for short URLs
 
 app.use(express.json());
 
-// Route to shorten a URL
+// Root route
+app.get("/", (req, res) => {
+  res.send(`
+    <h1>Welcome to the URL Shortener</h1>
+    <p>Use the API to shorten your URLs:</p>
+    <ul>
+      <li><strong>POST /shorten</strong> - Shorten a URL</li>
+      <li><strong>GET /:shortId</strong> - Redirect to the original URL</li>
+    </ul>
+  `);
+});
+
+// API to shorten a URL
 app.post("/shorten", (req, res) => {
   const { originalUrl } = req.body;
 
@@ -16,13 +28,13 @@ app.post("/shorten", (req, res) => {
     return res.status(400).send({ error: "Original URL is required" });
   }
 
-  const shortId = nanoid(6); // Generate a unique ID
+  const shortId = nanoid(6); // Generate unique ID
   urlDatabase[shortId] = originalUrl;
 
   res.send({ shortUrl: `${req.protocol}://${req.get("host")}/${shortId}` });
 });
 
-// Route to redirect to the original URL
+// Redirect to the original URL
 app.get("/:shortId", (req, res) => {
   const { shortId } = req.params;
   const originalUrl = urlDatabase[shortId];
@@ -34,7 +46,12 @@ app.get("/:shortId", (req, res) => {
   res.redirect(originalUrl);
 });
 
-// Start server
+// Catch-all for undefined routes
+app.use((req, res) => {
+  res.status(404).send("404: Page not found");
+});
+
+// Start the server
 app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+  console.log(`Server running at http://localhost:${port}`);
 });
