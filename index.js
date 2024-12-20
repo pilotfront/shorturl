@@ -9,7 +9,10 @@ const urlDatabase = {};  // In-memory storage for short URLs
 app.use(express.json());  // Allow the server to handle JSON data
 
 const cors = require('cors');
-app.use(cors());
+app.use(cors({
+  origin: 'https://www.pilotfront.com' // Replace with your Webflow domain
+}));
+
 
 
 // Root Route
