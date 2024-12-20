@@ -31,7 +31,7 @@ app.post('/shorten', (req, res) => {
     clicks: 0,
   };
 
-  res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
+  res.json({ shortUrl: https://${req.headers.host}/${shortId} });
 });
 
 // Redirect to the original URL
@@ -50,7 +50,7 @@ app.get('(req, res) => {
   // Redirect to the original URL
   const originalUrl = entry.originalUrl.startsWith('http') 
     ? entry.originalUrl 
-    : `https://${entry.originalUrl}`;
+    : https://${entry.originalUrl};
   
   res.redirect(originalUrl);
 });
@@ -71,13 +71,8 @@ app.post('/list', (req, res) => {
       clicks: data.clicks,
     }));
 
-  if (urls.length === 0) {
-    return res.status(404).json({ error: 'No URLs found for the given password' });
-  }
-
   res.json(urls);
 });
-
 
 
 
