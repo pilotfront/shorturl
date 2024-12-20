@@ -71,8 +71,13 @@ app.post('/list', (req, res) => {
       clicks: data.clicks,
     }));
 
+  if (urls.length === 0) {
+    return res.status(404).json({ error: 'No URLs found for the given password' });
+  }
+
   res.json(urls);
 });
+
 
 
 
