@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Shortener</title>
+  <style>
+    body {
+      background-color: #f8f9fa;
+      color: #495057;
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      background-color: #fff;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+      color: #343a40;
+      font-weight: 500;
+    }
+    input[type="text"] {
+      padding: 14px 20px;
+      border: 2px solid #ced4da;
+      background-color: #f8f9fa;
+      color: #495057;
+      border-radius: 8px;
+      font-size: 1rem;
+      width: 80%;
+      max-width: 400px;
+      margin-bottom: 20px;
+      transition: border-color 0.3s ease;
+    }
+    input[type="text"]:focus {
+      border-color: #007bff;
+      outline: none;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      width: 80%;
+      max-width: 400px;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    p {
+      margin-top: 20px;
+      font-size: 1.1rem;
+      color: #343a40;
+    }
+  </style>
+  <script>
+    async function shortenUrl() {
+      const originalUrl = document.getElementById('originalUrl').value;
+      if (!originalUrl) {
+        alert('Please enter a URL to shorten');
+        return;
+      }
+
+      const response = await fetch('/shorten', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ originalUrl }),
+      });
+
+      const data = await response.json();
+      if (data.shortUrl) {
+        document.getElementById('shortenedUrl').textContent = `Shortened URL: ${data.shortUrl}`;
+      } else {
+        alert('Error shortening URL');
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>URL Shortener</h1>
+    <input type="text" id="originalUrl" placeholder="Enter a URL to shorten">
+    <button onclick="shortenUrl()">Shorten URL</button>
+    <p id="shortenedUrl"></p>
+  </div>
+</body>
+</html>
