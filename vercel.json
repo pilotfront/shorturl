@@ -9,7 +9,7 @@
   "routes": [
     {
       "src": "/",
-      "dest": "https://www.thirdpartyurl.com",
+      "dest": "https://www.pilotfront.com",
       "status": 301
     },
     {
