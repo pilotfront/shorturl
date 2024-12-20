@@ -9,16 +9,6 @@ const urlDatabase = {};  // In-memory storage for short URLs
 app.use(express.json());  // Allow the server to handle JSON data
 
 
-// Use CORS middleware to enable cross-origin requests from your Webflow site
-app.use(cors({
-  origin: 'https://www.pilotfront.com',  // Replace with your Webflow domain or any other trusted origin
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type'],
-}));
-
-// Middleware to parse JSON bodies
-app.use(express.json());
-
 
 
 // Root Route
