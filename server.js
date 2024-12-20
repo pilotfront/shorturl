@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 
 const app = express();
+const dataPath = path.join(__dirname, 'urls.json');
 
 // Middleware
 app.use(bodyParser.json());
@@ -18,9 +19,6 @@ const generateShortId = () => {
   }
   return result;
 };
-
-// Path to store the shortened URLs
-const dataPath = path.join(__dirname, 'urls.json');
 
 // Load existing URLs from file
 const loadUrls = () => {
@@ -45,11 +43,6 @@ const saveUrls = (data) => {
     console.error('Error writing to urls.json:', error);
   }
 };
-
-// Root route (optional, returns a welcome message)
-app.get('/', (req, res) => {
-  res.send('Welcome to the URL Shortener API');
-});
 
 // API to shorten a URL
 app.post('/shorten', (req, res) => {
@@ -97,6 +90,7 @@ app.delete('/delete/:id', (req, res) => {
 app.get('/:id', (req, res) => {
   const urls = loadUrls();
   const originalUrl = urls[req.params.id]?.originalUrl;
+
   if (originalUrl) {
     res.redirect(originalUrl);
   } else {
@@ -104,5 +98,9 @@ app.get('/:id', (req, res) => {
   }
 });
 
-// Start the server (Vercel doesn't require app.listen for serverless)
+// Start the server
+const listener = app.listen(process.env.PORT || 3000, () => {
+  console.log(`Your app is listening on port ${listener.address().port}`);
+});
+
 module.exports = app;
