@@ -81,5 +81,23 @@ app.post('/list', (req, res) => {
   res.json(urls);
 });
 
+
+// Delete a URL by shortId
+app.delete('/delete/:shortId', (req, res) => {
+  const { shortId } = req.params;
+
+  // Check if the URL exists
+  if (!urlDatabase[shortId]) {
+    return res.status(404).json({ error: 'Short URL not found' });
+  }
+
+  // Delete the URL from the database
+  delete urlDatabase[shortId];
+
+  res.json({ message: 'URL deleted successfully' });
+});
+
+
+
 // Start the server
 module.exports = app;
