@@ -5,6 +5,7 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
+const password = "yourPassword";  // Change this to a secure password
 let urlDatabase = {};  // In-memory storage for short URLs
 
 app.use(cors({
@@ -21,22 +22,25 @@ app.get('/', (req, res) => {
 
 // Shorten a URL
 app.post('/shorten', (req, res) => {
-  const { originalUrl, userId } = req.body;
+  const { originalUrl, userPassword } = req.body;
 
-  if (!originalUrl || !userId) {
-    return res.status(400).json({ error: 'You must provide a URL and user ID!' });
+  if (!originalUrl || !userPassword) {
+    return res.status(400).json({ error: 'You must provide a URL and password!' });
+  }
+
+  if (userPassword !== password) {
+    return res.status(403).json({ error: 'Incorrect password!' });
   }
 
   const shortId = nanoid(6); // Create a unique ID for the URL
   const shortUrl = `https://${req.headers.host}/${shortId}`;
-  
-  // Create user-specific data
-  if (!urlDatabase[userId]) {
-    urlDatabase[userId] = [];
+
+  // Store the shortened URL for this password
+  if (!urlDatabase[userPassword]) {
+    urlDatabase[userPassword] = [];
   }
 
-  // Store the shortened URL with click count
-  urlDatabase[userId].push({ originalUrl, shortId, shortUrl, clicks: 0 });
+  urlDatabase[userPassword].push({ originalUrl, shortId, shortUrl, clicks: 0 });
   
   // Send back the shortened URL
   res.json({ shortUrl });
@@ -45,10 +49,9 @@ app.post('/shorten', (req, res) => {
 // Redirect to the original URL
 app.get('/:shortId', (req, res) => {
   const { shortId } = req.params;
-  
-  // Find the original URL for the shortId
+
   let originalUrl;
-  Object.values(urlDatabase).forEach(userUrls => {
+  Object.entries(urlDatabase).forEach(([userPassword, userUrls]) => {
     const url = userUrls.find(item => item.shortId === shortId);
     if (url) {
       originalUrl = url.originalUrl;
@@ -66,19 +69,22 @@ app.get('/:shortId', (req, res) => {
 
 // Delete a shortened URL
 app.delete('/delete', (req, res) => {
-  const { userId, shortId } = req.body;
+  const { userPassword, shortId } = req.body;
 
-  if (!userId || !shortId) {
-    return res.status(400).json({ error: 'You must provide a user ID and short URL ID!' });
+  if (!userPassword || !shortId) {
+    return res.status(400).json({ error: 'You must provide a password and short URL ID!' });
   }
 
-  // Find and delete the URL
-  const userUrls = urlDatabase[userId];
+  if (userPassword !== password) {
+    return res.status(403).json({ error: 'Incorrect password!' });
+  }
+
+  const userUrls = urlDatabase[userPassword];
   if (!userUrls) {
     return res.status(404).json({ error: 'User not found!' });
   }
 
-  urlDatabase[userId] = userUrls.filter(item => item.shortId !== shortId);
+  urlDatabase[userPassword] = userUrls.filter(item => item.shortId !== shortId);
 
   res.json({ message: 'URL deleted successfully' });
 });
