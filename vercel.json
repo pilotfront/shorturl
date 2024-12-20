@@ -8,11 +8,13 @@
   ],
   "routes": [
     {
+      "src": "/",
+      "dest": "https://www.thirdpartyurl.com",
+      "status": 301
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.js"
     }
   ]
 }
-
-
-
