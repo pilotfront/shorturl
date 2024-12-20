@@ -8,7 +8,7 @@ const urlDatabase = {}; // In-memory storage for shortened URLs
 // Enable CORS for specific domains
 const corsOptions = {
   origin: 'https://www.pilotfront.com', // Allow requests only from your Webflow domain
-  methods: 'GET,POST', // Allowed HTTP methods
+  methods: 'GET,POST, DELETE', // Allowed HTTP methods
   allowedHeaders: 'Content-Type', // Allowed headers
 };
 
@@ -80,6 +80,27 @@ app.post('/list', (req, res) => {
 
   res.json(urls);
 });
+
+
+// Delete a URL by shortId
+app.delete('/delete/:shortId', (req, res) => {
+  const { shortId } = req.params;
+
+  // Check if the URL exists
+  if (!urlDatabase[shortId]) {
+    return res.status(404).json({ error: 'Short URL not found' });
+  }
+
+  // Delete the URL from the database
+  delete urlDatabase[shortId];
+
+  res.json({ message: 'URL deleted successfully' });
+});
+
+
+
+
+
 
 // Start the server
 module.exports = app;
