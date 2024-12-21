@@ -25,125 +25,119 @@ app.get('/', (req, res) => {
 // Admin Route - Password Protected
 // Admin Route - Password Protected
 // Admin Route - Password Protected
+// Admin Route - Password Protected
 app.get('/admin', (req, res) => {
   let html = `
     <h1>Admin Page</h1>
     <p>Please enter the password to access the admin page.</p>
     <script>
-      // Prompt for password before loading the actual content
+      // Prompt for password before showing any admin content
       const password = prompt("Enter the admin password:");
 
       if (password !== 'abc') {
         alert('Invalid password.');
         window.location.href = '/'; // Redirect to home if the password is incorrect
       } else {
-        // Password is correct, reload the page with content
-        window.location.href = '/admin?password=abc';
-      }
-    </script>
-  `;
+        // Password is correct, load the admin content dynamically
+        document.body.innerHTML = '<h1>Admin Page</h1><h2>All URLs</h2><table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>';
 
-  // Only show the content after the password is verified on the client side
-  res.send(html);
-});
-
-// Admin Page (Content shown after password verification)
-app.get('/admin', (req, res) => {
-  const password = req.query.password;
-
-  if (password !== 'abc') {
-    return res.status(403).send('<h1>Forbidden</h1><p>Invalid password.</p>');
-  }
-
-  let html = `
-    <h1>Admin Page</h1>
-    <h2>All URLs</h2>
-    <table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>`;
-
-  for (let shortId in urlDatabase) {
-    const entry = urlDatabase[shortId];
-    html += `<tr>
-      <td><a href="https://${req.headers.host}/${shortId}" target="_blank">${shortId}</a></td>
-      <td><a href="${entry.originalUrl}" target="_blank">${entry.originalUrl}</a></td>
-      <td>${entry.username}</td>
-      <td>${entry.password}</td>
-      <td>${entry.clicks}</td>
-      <td><button onclick="deleteUrl('${shortId}')">Delete</button></td>
-    </tr>`;
-  }
-
-  html += '</tbody></table>';
-
-  html += `
-    <h2>Create Custom Short URL</h2>
-    <form id="custom-short-form">
-      <label for="custom-short-id">Custom Short ID:</label>
-      <input type="text" id="custom-short-id" required>
-      <label for="custom-original-url">Original URL:</label>
-      <input type="url" id="custom-original-url" required>
-      <label for="custom-username">Username:</label>
-      <input type="text" id="custom-username" required>
-      <label for="custom-password">Password:</label>
-      <input type="password" id="custom-password" required>
-      <button type="submit">Create Custom Short URL</button>
-    </form>
-    <div id="custom-result"></div>
-
-    <script>
-      // Handle custom short URL creation
-      document.getElementById('custom-short-form').addEventListener('submit', function(event) {
-        event.preventDefault();
-        
-        const customShortId = document.getElementById('custom-short-id').value.trim();
-        const customOriginalUrl = document.getElementById('custom-original-url').value.trim();
-        const customUsername = document.getElementById('custom-username').value.trim();
-        const customPassword = document.getElementById('custom-password').value.trim();
-        
-        if (!customShortId || !customOriginalUrl || !customUsername || !customPassword) {
-          alert('Please fill all the fields!');
-          return;
-        }
-        
-        fetch('/create-custom-short-url', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            shortId: customShortId,
-            originalUrl: customOriginalUrl,
-            username: customUsername,
-            password: customPassword,
-          }),
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.shortUrl) {
-            document.getElementById('custom-result').innerHTML = 'Custom Short URL Created: <a href="' + data.shortUrl + '" target="_blank">' + data.shortUrl + '</a>';
-          } else if (data.error) {
-            document.getElementById('custom-result').innerHTML = 'Error: ' + data.error;
-          }
-        })
-        .catch(error => console.error('Error:', error));
-      });
-
-      function deleteUrl(shortId) {
-        fetch('/delete/' + shortId, { method: 'DELETE' })
+        // Fetch the URLs data dynamically
+        fetch('/admin/data')
           .then(response => response.json())
           .then(data => {
-            if (data.message) {
-              alert(data.message);
-              window.location.reload();
-            }
-          })
-          .catch(error => alert('Error deleting URL: ' + error));
+            data.forEach(entry => {
+              document.body.innerHTML += \`
+                <tr>
+                  <td><a href="https://\${window.location.hostname}/\${entry.shortId}" target="_blank">\${entry.shortId}</a></td>
+                  <td><a href="\${entry.originalUrl}" target="_blank">\${entry.originalUrl}</a></td>
+                  <td>\${entry.username}</td>
+                  <td>\${entry.password}</td>
+                  <td>\${entry.clicks}</td>
+                  <td><button onclick="deleteUrl('\${entry.shortId}')">Delete</button></td>
+                </tr>
+              \`;
+
+              // Add custom short URL creation form
+              document.body.innerHTML += \`
+                <h2>Create Custom Short URL</h2>
+                <form id="custom-short-form">
+                  <label for="custom-short-id">Custom Short ID:</label>
+                  <input type="text" id="custom-short-id" required>
+                  <label for="custom-original-url">Original URL:</label>
+                  <input type="url" id="custom-original-url" required>
+                  <label for="custom-username">Username:</label>
+                  <input type="text" id="custom-username" required>
+                  <label for="custom-password">Password:</label>
+                  <input type="password" id="custom-password" required>
+                  <button type="submit">Create Custom Short URL</button>
+                </form>
+                <div id="custom-result"></div>
+              \`;
+
+              // Handle custom short URL creation
+              document.getElementById('custom-short-form').addEventListener('submit', function(event) {
+                event.preventDefault();
+                const customShortId = document.getElementById('custom-short-id').value.trim();
+                const customOriginalUrl = document.getElementById('custom-original-url').value.trim();
+                const customUsername = document.getElementById('custom-username').value.trim();
+                const customPassword = document.getElementById('custom-password').value.trim();
+                if (!customShortId || !customOriginalUrl || !customUsername || !customPassword) {
+                  alert('Please fill all the fields!');
+                  return;
+                }
+                fetch('/create-custom-short-url', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    shortId: customShortId,
+                    originalUrl: customOriginalUrl,
+                    username: customUsername,
+                    password: customPassword
+                  })
+                })
+                .then(response => response.json())
+                .then(data => {
+                  if (data.shortUrl) {
+                    document.getElementById('custom-result').innerHTML = 'Custom Short URL Created: <a href="' + data.shortUrl + '" target="_blank">' + data.shortUrl + '</a>';
+                  } else {
+                    document.getElementById('custom-result').innerHTML = 'Error: ' + data.error;
+                  }
+                });
+              });
+
+              // Function to delete URL
+              window.deleteUrl = function(shortId) {
+                fetch('/delete/' + shortId, { method: 'DELETE' })
+                  .then(response => response.json())
+                  .then(data => {
+                    if (data.message) {
+                      alert(data.message);
+                      window.location.reload();
+                    }
+                  });
+              }
+            });
+          });
       }
     </script>
   `;
-
+  
+  // Send the initial page with prompt
   res.send(html);
 });
 
+// Admin Data Route to fetch the URLs dynamically
+app.get('/admin/data', (req, res) => {
+  const data = Object.entries(urlDatabase).map(([shortId, entry]) => ({
+    shortId,
+    originalUrl: entry.originalUrl,
+    username: entry.username,
+    password: entry.password,
+    clicks: entry.clicks,
+  }));
+
+  res.json(data);  // Send the URL data as JSON
+});
 
 
 // New route to handle custom short URL creation
