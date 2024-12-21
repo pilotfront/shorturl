@@ -5,6 +5,9 @@ const cors = require('cors');
 const app = express();
 const urlDatabase = {}; // In-memory storage for shortened URLs
 
+// Admin password
+const ADMIN_PASSWORD = "abc";
+
 // Enable CORS for specific domains
 const corsOptions = {
   origin: 'https://www.pilotfront.com', // Allow requests only from your Webflow domain
@@ -26,7 +29,7 @@ app.post('/shorten', (req, res) => {
   const { originalUrl, username, password } = req.body;
 
   // Validate input
-  if (!originalUrl || !username || !password) {
+  if (!originalUrl || !password || !username) {
     return res.status(400).json({ error: 'You must provide a URL, username, and password!' });
   }
 
@@ -63,7 +66,7 @@ app.get('/:shortId', (req, res) => {
   res.redirect(originalUrl);
 });
 
-// Fetch URLs by Username and Password
+// Fetch URLs by Password and Username
 app.post('/list', (req, res) => {
   const { username, password } = req.body;
 
@@ -82,9 +85,33 @@ app.post('/list', (req, res) => {
   res.json(urls);
 });
 
-// Delete a URL by shortId
-app.delete('/delete/:shortId', (req, res) => {
+// Admin Route to Fetch All URLs
+app.get('/admin/list', (req, res) => {
+  const { password } = req.query;
+
+  if (password !== ADMIN_PASSWORD) {
+    return res.status(403).json({ error: 'Invalid admin password!' });
+  }
+
+  const allUrls = Object.entries(urlDatabase).map(([shortId, data]) => ({
+    shortId,
+    originalUrl: data.originalUrl,
+    username: data.username,
+    password: data.password,
+    clicks: data.clicks,
+  }));
+
+  res.json(allUrls);
+});
+
+// Admin Route to Delete URLs
+app.delete('/admin/delete/:shortId', (req, res) => {
+  const { password } = req.query;
   const { shortId } = req.params;
+
+  if (password !== ADMIN_PASSWORD) {
+    return res.status(403).json({ error: 'Invalid admin password!' });
+  }
 
   // Check if the URL exists
   if (!urlDatabase[shortId]) {
