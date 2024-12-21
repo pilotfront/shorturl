@@ -1,6 +1,7 @@
 const express = require('express');
 const { nanoid } = require('nanoid');
 const cors = require('cors');
+const cookieParser = require('cookie-parser'); // To parse cookies
 
 const app = express();
 const urlDatabase = {}; // In-memory storage for shortened URLs
@@ -15,6 +16,7 @@ const corsOptions = {
 // Middleware
 app.use(cors(corsOptions)); // Apply CORS settings
 app.use(express.json()); // Parse JSON body
+app.use(cookieParser()); // Parse cookies
 
 // Home Route
 app.get('/', (req, res) => {
@@ -22,9 +24,9 @@ app.get('/', (req, res) => {
 });
 
 // Admin Route - Password Protected
-// Admin Route - Password Protected
 app.get('/admin', (req, res) => {
-  try {
+  // Check if the user has a valid session or cookie for authentication
+  if (req.cookies.authenticated !== 'true') {
     let html = `
       <html>
         <head>
@@ -38,155 +40,28 @@ app.get('/admin', (req, res) => {
                 return;
               }
 
-              // Send the password to the server for validation
-              fetch('/validate-password', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ password: password }),
-              })
-              .then(response => response.json())
-              .then(data => {
-                if (data.valid) {
-                  window.location.href = '/admin-dashboard'; // Redirect to the actual admin page
-                } else {
-                  alert("Invalid password.");
-                }
-              })
-              .catch(error => alert("Error validating password: " + error));
+              // Validate the password
+              if (password === 'abc') {
+                document.cookie = "authenticated=true; path=/"; // Set authentication cookie
+                window.location.reload(); // Reload the page after successful login
+              } else {
+                alert("Invalid password.");
+              }
             }
 
-            // Call the password prompt when the page loads
             window.onload = promptPassword;
           </script>
         </head>
         <body>
           <h1>Admin Page</h1>
-          <p>Please wait while we verify your credentials...</p>
+          <p>Please enter the password to access the admin page.</p>
         </body>
       </html>
     `;
-
-    res.send(html);
-  } catch (error) {
-    console.error('Error in /admin route:', error);
-    res.status(500).send('Internal Server Error');
+    return res.send(html);
   }
-});
 
-// Route to validate the password
-app.post('/validate-password', (req, res) => {
-  try {
-    const { password } = req.body;
-
-    if (password === 'abc') {
-      return res.json({ valid: true });
-    }
-
-    return res.json({ valid: false });
-  } catch (error) {
-    console.error('Error in /validate-password route:', error);
-    res.status(500).send('Internal Server Error');
-  }
-});
-
-// Admin Dashboard Route
-app.get('/admin-dashboard', (req, res) => {
-  try {
-    let html = '<h1>Admin Page</h1>';
-    html += '<h2>All URLs</h2>';
-    html += '<table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>';
-
-    for (let shortId in urlDatabase) {
-      const entry = urlDatabase[shortId];
-      html += `
-        <tr>
-          <td><a href="https://${req.headers.host}/${shortId}" target="_blank">${shortId}</a></td>
-          <td><a href="${entry.originalUrl}" target="_blank">${entry.originalUrl}</a></td>
-          <td>${entry.username}</td>
-          <td>${entry.password}</td>
-          <td>${entry.clicks}</td>
-          <td><button onclick="deleteUrl('${shortId}')">Delete</button></td>
-        </tr>
-      `;
-    }
-
-    html += '</tbody></table>';
-
-    // Form for creating a custom short URL
-    html += `
-      <h2>Create Custom Short URL</h2>
-      <form id="custom-short-form">
-        <label for="custom-short-id">Custom Short ID:</label>
-        <input type="text" id="custom-short-id" required>
-        <label for="custom-original-url">Original URL:</label>
-        <input type="url" id="custom-original-url" required>
-        <label for="custom-username">Username:</label>
-        <input type="text" id="custom-username" required>
-        <label for="custom-password">Password:</label>
-        <input type="password" id="custom-password" required>
-        <button type="submit">Create Custom Short URL</button>
-      </form>
-      <div id="custom-result"></div>
-      <script>
-        document.getElementById('custom-short-form').addEventListener('submit', function(event) {
-          event.preventDefault();
-          
-          const customShortId = document.getElementById('custom-short-id').value.trim();
-          const customOriginalUrl = document.getElementById('custom-original-url').value.trim();
-          const customUsername = document.getElementById('custom-username').value.trim();
-          const customPassword = document.getElementById('custom-password').value.trim();
-          
-          if (!customShortId || !customOriginalUrl || !customUsername || !customPassword) {
-            alert('Please fill all the fields!');
-            return;
-          }
-          
-          fetch('/create-custom-short-url', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              shortId: customShortId,
-              originalUrl: customOriginalUrl,
-              username: customUsername,
-              password: customPassword,
-            }),
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.shortUrl) {
-              document.getElementById('custom-result').innerHTML = 'Custom Short URL Created: <a href="' + data.shortUrl + '" target="_blank">' + data.shortUrl + '</a>';
-            } else if (data.error) {
-              document.getElementById('custom-result').innerHTML = 'Error: ' + data.error;
-            }
-          })
-          .catch(error => console.error('Error:', error));
-        });
-
-        function deleteUrl(shortId) {
-          fetch('/delete/' + shortId, { method: 'DELETE' })
-            .then(response => response.json())
-            .then(data => {
-              if (data.message) {
-                alert(data.message);
-                window.location.reload();
-              }
-            })
-            .catch(error => alert('Error deleting URL: ' + error));
-        }
-      </script>
-    `;
-    
-    res.send(html);
-  } catch (error) {
-    console.error('Error in /admin-dashboard route:', error);
-    res.status(500).send('Internal Server Error');
-  }
-});
-
-// Admin Dashboard Route
-app.get('/admin-dashboard', (req, res) => {
+  // If authenticated, show the admin page
   let html = '<h1>Admin Page</h1>';
   html += '<h2>All URLs</h2>';
   html += '<table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>';
@@ -223,6 +98,7 @@ app.get('/admin-dashboard', (req, res) => {
     </form>
     <div id="custom-result"></div>
     <script>
+      // Handle custom short URL creation
       document.getElementById('custom-short-form').addEventListener('submit', function(event) {
         event.preventDefault();
         
@@ -231,6 +107,7 @@ app.get('/admin-dashboard', (req, res) => {
         const customUsername = document.getElementById('custom-username').value.trim();
         const customPassword = document.getElementById('custom-password').value.trim();
         
+        // Validate input
         if (!customShortId || !customOriginalUrl || !customUsername || !customPassword) {
           alert('Please fill all the fields!');
           return;
@@ -238,7 +115,9 @@ app.get('/admin-dashboard', (req, res) => {
         
         fetch('/create-custom-short-url', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+          },
           body: JSON.stringify({
             shortId: customShortId,
             originalUrl: customOriginalUrl,
@@ -254,7 +133,9 @@ app.get('/admin-dashboard', (req, res) => {
             document.getElementById('custom-result').innerHTML = 'Error: ' + data.error;
           }
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+          console.error('Error:', error);
+        });
       });
 
       function deleteUrl(shortId) {
@@ -273,7 +154,6 @@ app.get('/admin-dashboard', (req, res) => {
   
   res.send(html);
 });
-
 
 // New route to handle custom short URL creation
 app.post('/create-custom-short-url', (req, res) => {
@@ -298,9 +178,8 @@ app.post('/create-custom-short-url', (req, res) => {
   };
 
   // Respond with the newly created short URL
-  res.json({ shortUrl: https://${req.headers.host}/${shortId} });
+  res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
 });
-
 
 // Shorten a URL
 app.post('/shorten', (req, res) => {
@@ -320,7 +199,7 @@ app.post('/shorten', (req, res) => {
     clicks: 0,
   };
 
-  res.json({ shortUrl: https://${req.headers.host}/${shortId} });
+  res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
 });
 
 // Redirect to the original URL
@@ -339,28 +218,9 @@ app.get('/:shortId', (req, res) => {
   // Redirect to the original URL
   const originalUrl = entry.originalUrl.startsWith('http') 
     ? entry.originalUrl 
-    : https://${entry.originalUrl};
+    : `https://${entry.originalUrl}`;
   
   res.redirect(originalUrl);
-});
-
-// Fetch URLs by Password and Username
-app.post('/list', (req, res) => {
-  const { password, username } = req.body;
-
-  if (!password || !username) {
-    return res.status(400).json({ error: 'Password and username are required!' });
-  }
-
-  const urls = Object.entries(urlDatabase)
-    .filter(([key, value]) => value.password === password && value.username === username)
-    .map(([shortId, data]) => ({
-      shortId,
-      originalUrl: data.originalUrl,
-      clicks: data.clicks,
-    }));
-
-  res.json(urls);
 });
 
 // Delete a URL by shortId
