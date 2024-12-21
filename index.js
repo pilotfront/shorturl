@@ -1,7 +1,6 @@
 const express = require('express');
 const { nanoid } = require('nanoid');
 const cors = require('cors');
-const cookieParser = require('cookie-parser'); // To parse cookies
 
 const app = express();
 const urlDatabase = {}; // In-memory storage for shortened URLs
@@ -16,7 +15,6 @@ const corsOptions = {
 // Middleware
 app.use(cors(corsOptions)); // Apply CORS settings
 app.use(express.json()); // Parse JSON body
-app.use(cookieParser()); // Parse cookies
 
 // Home Route
 app.get('/', (req, res) => {
@@ -25,59 +23,26 @@ app.get('/', (req, res) => {
 
 // Admin Route - Password Protected
 app.get('/admin', (req, res) => {
-  // Check if the user has a valid session or cookie for authentication
-  if (req.cookies.authenticated !== 'true') {
-    let html = `
-      <html>
-        <head>
-          <title>Admin Page</title>
-          <script>
-            // Prompt for the password
-            function promptPassword() {
-              const password = prompt("Please enter the admin password:");
-              if (password === null || password === "") {
-                alert("Password is required.");
-                return;
-              }
+  const password = req.query.password;
 
-              // Validate the password
-              if (password === 'abc') {
-                document.cookie = "authenticated=true; path=/"; // Set authentication cookie
-                window.location.reload(); // Reload the page after successful login
-              } else {
-                alert("Invalid password.");
-              }
-            }
-
-            window.onload = promptPassword;
-          </script>
-        </head>
-        <body>
-          <h1>Admin Page</h1>
-          <p>Please enter the password to access the admin page.</p>
-        </body>
-      </html>
-    `;
-    return res.send(html);
+  if (password !== 'abc') {
+    return res.status(403).send('<h1>Forbidden</h1><p>Invalid password.</p>');
   }
 
-  // If authenticated, show the admin page
   let html = '<h1>Admin Page</h1>';
   html += '<h2>All URLs</h2>';
   html += '<table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>';
 
   for (let shortId in urlDatabase) {
     const entry = urlDatabase[shortId];
-    html += `
-      <tr>
-        <td><a href="https://${req.headers.host}/${shortId}" target="_blank">${shortId}</a></td>
-        <td><a href="${entry.originalUrl}" target="_blank">${entry.originalUrl}</a></td>
-        <td>${entry.username}</td>
-        <td>${entry.password}</td>
-        <td>${entry.clicks}</td>
-        <td><button onclick="deleteUrl('${shortId}')">Delete</button></td>
-      </tr>
-    `;
+    html += `<tr>
+      <td><a href="https://${req.headers.host}/${shortId}" target="_blank">${shortId}</a></td>
+      <td><a href="${entry.originalUrl}" target="_blank">${entry.originalUrl}</a></td>
+      <td>${entry.username}</td>
+      <td>${entry.password}</td>
+      <td>${entry.clicks}</td>
+      <td><button onclick="deleteUrl('${shortId}')">Delete</button></td>
+    </tr>`;
   }
 
   html += '</tbody></table>';
@@ -151,7 +116,7 @@ app.get('/admin', (req, res) => {
       }
     </script>
   `;
-  
+
   res.send(html);
 });
 
@@ -180,6 +145,7 @@ app.post('/create-custom-short-url', (req, res) => {
   // Respond with the newly created short URL
   res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
 });
+
 
 // Shorten a URL
 app.post('/shorten', (req, res) => {
@@ -221,6 +187,25 @@ app.get('/:shortId', (req, res) => {
     : `https://${entry.originalUrl}`;
   
   res.redirect(originalUrl);
+});
+
+// Fetch URLs by Password and Username
+app.post('/list', (req, res) => {
+  const { password, username } = req.body;
+
+  if (!password || !username) {
+    return res.status(400).json({ error: 'Password and username are required!' });
+  }
+
+  const urls = Object.entries(urlDatabase)
+    .filter(([key, value]) => value.password === password && value.username === username)
+    .map(([shortId, data]) => ({
+      shortId,
+      originalUrl: data.originalUrl,
+      clicks: data.clicks,
+    }));
+
+  res.json(urls);
 });
 
 // Delete a URL by shortId
