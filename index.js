@@ -23,13 +23,34 @@ app.get('/', (req, res) => {
 
 // Admin Route - Password Protected
 // Admin Route - Password Protected
+// Admin Route - Password Protected
 app.get('/admin', (req, res) => {
-  let html = `
-    <h1>Admin Page</h1>
-    <h2>All URLs</h2>
-    <table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>`;
+  // Prompt for password before displaying the admin page content.
+  res.send(`
+    <script>
+      // Prompt for password before loading admin page
+      const password = prompt("Enter the admin password:");
 
-  // Generate the table of URLs
+      if (password !== 'abc') {
+        // If password is incorrect, alert and redirect to home
+        alert('Invalid password.');
+        window.location.href = '/'; // Redirect to home if password is invalid
+      } else {
+        // Password is correct, fetch and display the admin content
+        window.location.href = '/admin/dashboard'; // Redirect to a separate route to show the admin dashboard
+      }
+    </script>
+  `);
+});
+
+// Admin Dashboard Route - Protected Content
+app.get('/admin/dashboard', (req, res) => {
+  // This route is only accessible after the password prompt is validated
+  let html = '<h1>Admin Dashboard</h1>';
+  html += '<h2>All URLs</h2>';
+  html += '<table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>';
+
+  // Populate the URLs in the database
   for (let shortId in urlDatabase) {
     const entry = urlDatabase[shortId];
     html += `<tr>
@@ -59,31 +80,22 @@ app.get('/admin', (req, res) => {
       <button type="submit">Create Custom Short URL</button>
     </form>
     <div id="custom-result"></div>
-
     <script>
-      // Prompt for password before loading admin page
-      const password = prompt("Enter the admin password:");
-
-      if (password !== 'abc') {
-        alert('Invalid password.');
-        window.location.href = '/';
-      }
-
       // Handle custom short URL creation
       document.getElementById('custom-short-form').addEventListener('submit', function(event) {
         event.preventDefault();
-        
+
         const customShortId = document.getElementById('custom-short-id').value.trim();
         const customOriginalUrl = document.getElementById('custom-original-url').value.trim();
         const customUsername = document.getElementById('custom-username').value.trim();
         const customPassword = document.getElementById('custom-password').value.trim();
-        
+
         // Validate input
         if (!customShortId || !customOriginalUrl || !customUsername || !customPassword) {
           alert('Please fill all the fields!');
           return;
         }
-        
+
         fetch('/create-custom-short-url', {
           method: 'POST',
           headers: {
@@ -123,6 +135,7 @@ app.get('/admin', (req, res) => {
     </script>
   `;
 
+  // Send the admin content
   res.send(html);
 });
 
