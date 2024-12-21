@@ -25,11 +25,27 @@ app.get('/', (req, res) => {
 app.get('/admin', (req, res) => {
   const { password } = req.query;
 
-  // Check the password
+  // If no password is provided, prompt for it via client-side script
+  if (!password) {
+    return res.send(`
+      <script>
+        const password = prompt("Enter the admin password:");
+        if (password) {
+          window.location.href = \`/admin?password=\${encodeURIComponent(password)}\`;
+        } else {
+          alert("Password is required.");
+          window.location.href = '/';
+        }
+      </script>
+    `);
+  }
+
+  // Validate the password
   if (password !== 'abc') {
     return res.status(403).send('<h1>403 Forbidden</h1><p>Invalid password.</p>');
   }
 
+  // Generate the admin page content
   let html = `
     <h1>Admin Page</h1>
     <h2>All URLs</h2>
@@ -112,6 +128,7 @@ app.get('/admin', (req, res) => {
 
   res.send(html);
 });
+
 
 
 // New route to handle custom short URL creation
