@@ -16,7 +16,7 @@ const corsOptions = {
 app.use(cors(corsOptions)); // Apply CORS settings
 app.use(express.json()); // Parse JSON body
 
-// Password Middleware to protect Admin Dashboard
+// Password Middleware to protect cloudbase Dashboard
 function passwordProtect(req, res, next) {
   // Check for password in the query string
   const { password } = req.query;
@@ -33,24 +33,24 @@ app.get('/', (req, res) => {
   res.send('<h1>URL Shortener</h1><p>Use POST /shorten to create a short URL.</p>');
 });
 
-// Admin Route - Password Protected
-app.get('/admin', (req, res) => {
+// cloudbase Route - Password Protected
+app.get('/cloudbase', (req, res) => {
   res.send(`
     <script>
-      const password = prompt("Enter the admin password:");
+      const password = prompt("Enter the cloudbase password:");
       if (password !== 'abc') {
         alert('Invalid password.');
         window.location.href = '/'; // Redirect to home if password is invalid
       } else {
-        window.location.href = '/admin/dashboard?password=' + password; // Pass password in query to dashboard
+        window.location.href = '/cloudbase/dashboard?password=' + password; // Pass password in query to dashboard
       }
     </script>
   `);
 });
 
-// Admin Dashboard Route - Password Protected
-app.get('/admin/dashboard', passwordProtect, (req, res) => {
-  let html = '<h1>Admin Dashboard</h1>';
+// cloudbase Dashboard Route - Password Protected
+app.get('/cloudbase/dashboard', passwordProtect, (req, res) => {
+  let html = '<h1>cloudbase Dashboard</h1>';
   html += '<h2>All URLs</h2>';
   html += '<table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>';
 
