@@ -1,6 +1,7 @@
 const express = require('express');
 const { nanoid } = require('nanoid');
 const cors = require('cors');
+const session = require('express-session');
 
 const app = express();
 const urlDatabase = {}; // In-memory storage for shortened URLs
@@ -15,37 +16,58 @@ const corsOptions = {
 // Middleware
 app.use(cors(corsOptions)); // Apply CORS settings
 app.use(express.json()); // Parse JSON body
+app.use(express.urlencoded({ extended: true })); // For parsing form data
+app.use(session({
+  secret: 'your-secret-key', // Use a secret key for session signing
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false } // set to true if you're using HTTPS
+}));
 
 // Home Route
 app.get('/', (req, res) => {
   res.send('<h1>URL Shortener</h1><p>Use POST /shorten to create a short URL.</p>');
 });
 
-// Admin Route - Password Protected
-// Admin Route - Password Protected
-// Admin Route - Password Protected
-app.get('/admin', (req, res) => {
-  // Prompt for password before displaying the admin page content.
-  res.send(`
-    <script>
-      // Prompt for password before loading admin page
-      const password = prompt("Enter the admin password:");
+// Login Route (POST) - Handle the authentication
+app.post('/admin/login', (req, res) => {
+  const { password } = req.body;
 
-      if (password !== 'abc') {
-        // If password is incorrect, alert and redirect to home
-        alert('Invalid password.');
-        window.location.href = '/'; // Redirect to home if password is invalid
-      } else {
-        // Password is correct, fetch and display the admin content
-        window.location.href = '/admin/dashboard'; // Redirect to a separate route to show the admin dashboard
-      }
-    </script>
+  // Check the password on the server side
+  if (password === 'abc') {
+    // Store the authenticated session
+    req.session.isAuthenticated = true;
+    res.redirect('/admin/dashboard');
+  } else {
+    res.status(401).send('<h1>Invalid password</h1><p>Access denied.</p>');
+  }
+});
+
+// Admin Route - Password Protected (GET)
+app.get('/admin', (req, res) => {
+  // If the user is already authenticated, redirect to the dashboard
+  if (req.session.isAuthenticated) {
+    return res.redirect('/admin/dashboard');
+  }
+
+  // If not authenticated, show the login form
+  res.send(`
+    <h1>Admin Login</h1>
+    <form method="POST" action="/admin/login">
+      <label for="password">Password:</label>
+      <input type="password" id="password" name="password" required>
+      <button type="submit">Login</button>
+    </form>
   `);
 });
 
 // Admin Dashboard Route - Protected Content
 app.get('/admin/dashboard', (req, res) => {
-  // This route is only accessible after the password prompt is validated
+  // Ensure the user is authenticated before rendering the admin dashboard
+  if (!req.session.isAuthenticated) {
+    return res.status(403).send('<h1>Forbidden</h1><p>Access Denied.</p>');
+  }
+
   let html = '<h1>Admin Dashboard</h1>';
   html += '<h2>All URLs</h2>';
   html += '<table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>';
@@ -135,12 +157,8 @@ app.get('/admin/dashboard', (req, res) => {
     </script>
   `;
 
-  // Send the admin content
   res.send(html);
 });
-
-
-
 
 // New route to handle custom short URL creation
 app.post('/create-custom-short-url', (req, res) => {
@@ -167,7 +185,6 @@ app.post('/create-custom-short-url', (req, res) => {
   // Respond with the newly created short URL
   res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
 });
-
 
 // Shorten a URL
 app.post('/shorten', (req, res) => {
@@ -209,25 +226,6 @@ app.get('/:shortId', (req, res) => {
     : `https://${entry.originalUrl}`;
   
   res.redirect(originalUrl);
-});
-
-// Fetch URLs by Password and Username
-app.post('/list', (req, res) => {
-  const { password, username } = req.body;
-
-  if (!password || !username) {
-    return res.status(400).json({ error: 'Password and username are required!' });
-  }
-
-  const urls = Object.entries(urlDatabase)
-    .filter(([key, value]) => value.password === password && value.username === username)
-    .map(([shortId, data]) => ({
-      shortId,
-      originalUrl: data.originalUrl,
-      clicks: data.clicks,
-    }));
-
-  res.json(urls);
 });
 
 // Delete a URL by shortId
