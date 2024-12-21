@@ -87,25 +87,32 @@ app.post('/list', (req, res) => {
 
 // Admin Route to Fetch All URLs
 app.get('/admin/list', (req, res) => {
-  const { password } = req.query;
-  console.log('Admin list accessed with password:', password);
+  try {
+    const { password } = req.query;
 
-  if (password !== ADMIN_PASSWORD) {
-    console.log('Invalid admin password:', password);
-    return res.status(403).json({ error: 'Invalid admin password!' });
+    if (!password) {
+      return res.status(400).json({ error: 'Password is required!' });
+    }
+
+    if (password !== ADMIN_PASSWORD) {
+      return res.status(403).json({ error: 'Invalid admin password!' });
+    }
+
+    const allUrls = Object.entries(urlDatabase).map(([shortId, data]) => ({
+      shortId,
+      originalUrl: data.originalUrl,
+      username: data.username,
+      password: data.password,
+      clicks: data.clicks,
+    }));
+
+    res.json(allUrls);
+  } catch (err) {
+    console.error('Error fetching admin list:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
-
-  const allUrls = Object.entries(urlDatabase).map(([shortId, data]) => ({
-    shortId,
-    originalUrl: data.originalUrl,
-    username: data.username,
-    password: data.password,
-    clicks: data.clicks,
-  }));
-
-  console.log('Returning admin list:', allUrls);
-  res.json(allUrls);
 });
+
 
 
 // Admin Route to Delete URLs
