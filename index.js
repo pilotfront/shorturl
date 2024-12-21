@@ -23,31 +23,67 @@ app.get('/', (req, res) => {
 
 // Admin Route - Password Protected
 app.get('/admin', (req, res) => {
-  const { password } = req.query;
+  // Serve a password entry form if no password is validated yet
+  res.send(`
+    <h1>Admin Login</h1>
+    <form id="admin-login-form">
+      <label for="password">Enter Admin Password:</label>
+      <input type="password" id="password" required>
+      <button type="submit">Login</button>
+    </form>
+    <div id="login-error" style="color: red;"></div>
+    <script>
+      document.getElementById('admin-login-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        
+        const password = document.getElementById('password').value.trim();
 
-  // If no password is provided, prompt for it via client-side script
-  if (!password) {
-    return res.send(`
-      <script>
-        const password = prompt("Enter the admin password:");
-        if (password) {
-          window.location.href = \`/admin?password=\${encodeURIComponent(password)}\`;
-        } else {
-          alert("Password is required.");
-          window.location.href = '/';
+        if (!password) {
+          alert('Password is required!');
+          return;
         }
-      </script>
-    `);
-  }
 
-  // Validate the password
-  if (password !== 'abc') {
-    return res.status(403).send('<h1>403 Forbidden</h1><p>Invalid password.</p>');
-  }
+        fetch('/validate-admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        })
+          .then(response => {
+            if (response.ok) {
+              window.location.href = '/admin/dashboard'; // Redirect to dashboard
+            } else {
+              return response.text();
+            }
+          })
+          .then(errorMessage => {
+            if (errorMessage) {
+              document.getElementById('login-error').textContent = errorMessage;
+            }
+          })
+          .catch(error => {
+            console.error('Error during login:', error);
+          });
+      });
+    </script>
+  `);
+});
 
-  // Generate the admin page content
+// Route to validate admin password
+app.post('/validate-admin', (req, res) => {
+  const { password } = req.body;
+
+  if (password === 'abc') {
+    res.status(200).send(); // Password is correct
+  } else {
+    res.status(403).send('Invalid password.'); // Password is incorrect
+  }
+});
+
+// Admin dashboard route (protected)
+app.get('/admin/dashboard', (req, res) => {
+  // Render the admin dashboard
   let html = `
-    <h1>Admin Page</h1>
+    <h1>Admin Dashboard</h1>
     <h2>All URLs</h2>
     <table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>`;
 
@@ -66,7 +102,7 @@ app.get('/admin', (req, res) => {
 
   html += '</tbody></table>';
 
-  // Add form for custom short URL creation
+  // Add form for creating custom short URLs
   html += `
     <h2>Create Custom Short URL</h2>
     <form id="custom-short-form">
@@ -128,6 +164,7 @@ app.get('/admin', (req, res) => {
 
   res.send(html);
 });
+
 
 
 
