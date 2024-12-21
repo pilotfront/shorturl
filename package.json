@@ -6,7 +6,8 @@
   "dependencies": {
     "express": "^4.17.1",
     "nanoid": "^3.1.18",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "express-session": "^1.17.3"
   },
   "devDependencies": {},
   "scripts": {
