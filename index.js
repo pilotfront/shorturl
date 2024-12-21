@@ -12,17 +12,42 @@ const corsOptions = {
   allowedHeaders: 'Content-Type', // Allowed headers
 };
 
-// Middleware
 app.use(cors(corsOptions)); // Apply CORS settings
 app.use(express.json()); // Parse JSON body
+app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 
 // Home Route
 app.get('/', (req, res) => {
   res.send('<h1>URL Shortener</h1><p>Use POST /shorten to create a short URL.</p>');
 });
 
-// Admin Route - Password Protected
-// Admin Route - Password Protected
+// Admin Route - Password Prompt
+app.get('/admin', (req, res) => {
+  // Check if the user is authenticated using the query parameter
+  const isAuthenticated = req.query.authenticated === 'true';
+
+  if (isAuthenticated) {
+    return res.redirect('/admin/dashboard'); // If authenticated, go directly to the dashboard
+  }
+
+  res.send(`
+    <script>
+      // Prompt for password before loading admin page
+      const password = prompt("Enter the admin password:");
+
+      if (password !== 'abc') {
+        // If password is incorrect, alert and redirect to home
+        alert('Invalid password.');
+        window.location.href = '/'; // Redirect to home if password is invalid
+      } else {
+        // Password is correct, redirect to dashboard with authenticated flag
+        window.location.href = '/admin/dashboard?authenticated=true'; // Redirect to dashboard with auth query
+      }
+    </script>
+  `);
+});
+
+// Admin Dashboard Route - Protected Content
 app.get('/admin/dashboard', (req, res) => {
   // Check if the user is authenticated using the query parameter
   const isAuthenticated = req.query.authenticated === 'true';
@@ -122,9 +147,6 @@ app.get('/admin/dashboard', (req, res) => {
   res.send(html);
 });
 
-
-
-
 // New route to handle custom short URL creation
 app.post('/create-custom-short-url', (req, res) => {
   const { shortId, originalUrl, username, password } = req.body;
@@ -150,7 +172,6 @@ app.post('/create-custom-short-url', (req, res) => {
   // Respond with the newly created short URL
   res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
 });
-
 
 // Shorten a URL
 app.post('/shorten', (req, res) => {
