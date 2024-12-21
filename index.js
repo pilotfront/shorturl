@@ -38,7 +38,7 @@ app.get('/cloudbase', (req, res) => {
   res.send(`
     <script>
       const password = prompt("Enter the cloudbase password:");
-      if (password !== 'abc') {
+      if (password !== '8770380772@#') {
         alert('Invalid password.');
         window.location.href = '/'; // Redirect to home if password is invalid
       } else {
