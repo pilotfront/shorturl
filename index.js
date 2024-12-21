@@ -43,7 +43,7 @@ app.use(express.json());
 app.post('/admin/login', (req, res) => {
   const { password } = req.body;
   
-  if (password !== 123) {
+  if (password !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Invalid password' });
   }
   
