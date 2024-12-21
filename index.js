@@ -22,8 +22,14 @@ app.get('/', (req, res) => {
 });
 
 // Admin Route - Password Protected
-// Admin Route - Password Protected
 app.get('/admin', (req, res) => {
+  const { password } = req.query;
+
+  // Check the password
+  if (password !== 'abc') {
+    return res.status(403).send('<h1>403 Forbidden</h1><p>Invalid password.</p>');
+  }
+
   let html = `
     <h1>Admin Page</h1>
     <h2>All URLs</h2>
@@ -44,7 +50,7 @@ app.get('/admin', (req, res) => {
 
   html += '</tbody></table>';
 
-  // Form for creating a custom short URL
+  // Add form for custom short URL creation
   html += `
     <h2>Create Custom Short URL</h2>
     <form id="custom-short-form">
@@ -61,52 +67,33 @@ app.get('/admin', (req, res) => {
     <div id="custom-result"></div>
 
     <script>
-      // Prompt for password before loading admin page
-      const password = prompt("Enter the admin password:");
-
-      if (password !== 'abc') {
-        alert('Invalid password.');
-        window.location.href = '/';
-      }
-
-      // Handle custom short URL creation
       document.getElementById('custom-short-form').addEventListener('submit', function(event) {
         event.preventDefault();
-        
+
         const customShortId = document.getElementById('custom-short-id').value.trim();
         const customOriginalUrl = document.getElementById('custom-original-url').value.trim();
         const customUsername = document.getElementById('custom-username').value.trim();
         const customPassword = document.getElementById('custom-password').value.trim();
-        
-        // Validate input
+
         if (!customShortId || !customOriginalUrl || !customUsername || !customPassword) {
           alert('Please fill all the fields!');
           return;
         }
-        
+
         fetch('/create-custom-short-url', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            shortId: customShortId,
-            originalUrl: customOriginalUrl,
-            username: customUsername,
-            password: customPassword,
-          }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ shortId: customShortId, originalUrl: customOriginalUrl, username: customUsername, password: customPassword }),
         })
-        .then(response => response.json())
-        .then(data => {
-          if (data.shortUrl) {
-            document.getElementById('custom-result').innerHTML = 'Custom Short URL Created: <a href="' + data.shortUrl + '" target="_blank">' + data.shortUrl + '</a>';
-          } else if (data.error) {
-            document.getElementById('custom-result').innerHTML = 'Error: ' + data.error;
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-        });
+          .then(response => response.json())
+          .then(data => {
+            if (data.shortUrl) {
+              document.getElementById('custom-result').innerHTML = 'Custom Short URL Created: <a href="' + data.shortUrl + '" target="_blank">' + data.shortUrl + '</a>';
+            } else if (data.error) {
+              document.getElementById('custom-result').innerHTML = 'Error: ' + data.error;
+            }
+          })
+          .catch(error => console.error('Error:', error));
       });
 
       function deleteUrl(shortId) {
@@ -125,6 +112,7 @@ app.get('/admin', (req, res) => {
 
   res.send(html);
 });
+
 
 // New route to handle custom short URL creation
 app.post('/create-custom-short-url', (req, res) => {
