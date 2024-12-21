@@ -1,29 +1,36 @@
 const express = require('express');
 const { nanoid } = require('nanoid');
 const cors = require('cors');
-const crypto = require('crypto'); // Built-in Node.js crypto module
+const crypto = require('crypto');
 
 const app = express();
 const urlDatabase = {}; // In-memory storage for shortened URLs
 
 // Store admin credentials securely (in production, use environment variables)
-const ADMIN_PASSWORD = '123'; // Change this to your desired password
-const TOKEN_SECRET = crypto.randomBytes(64).toString('hex'); // Generate a random token secret
+const ADMIN_PASSWORD = 'your_secure_password_here'; // Change this to your desired password
+const TOKEN_SECRET = crypto.randomBytes(64).toString('hex');
+
+// Store valid tokens (in production, use Redis or similar)
+const validTokens = new Set();
 
 // Generate a secure token
 function generateToken() {
   return crypto.randomBytes(32).toString('hex');
 }
 
-// Store valid tokens (in production, use Redis or similar)
-const validTokens = new Set();
-
 // Middleware to verify admin token
 const verifyAdminToken = (req, res, next) => {
   const token = req.headers['x-admin-token'];
+  console.log('Received token:', token); // Debug log
   
-  if (!token || !validTokens.has(token)) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  if (!token) {
+    console.log('No token provided'); // Debug log
+    return res.status(401).json({ error: 'No authentication token provided' });
+  }
+  
+  if (!validTokens.has(token)) {
+    console.log('Invalid token'); // Debug log
+    return res.status(401).json({ error: 'Invalid or expired token' });
   }
   
   next();
@@ -31,9 +38,10 @@ const verifyAdminToken = (req, res, next) => {
 
 // Enable CORS for specific domains
 const corsOptions = {
-  origin: 'https://www.pilotfront.com',
+  origin: ['https://www.pilotfront.com', 'https://www.pilotfront.click'], // Allow both domains
   methods: 'GET,POST,DELETE',
   allowedHeaders: ['Content-Type', 'x-admin-token'],
+  credentials: true
 };
 
 app.use(cors(corsOptions));
@@ -42,17 +50,21 @@ app.use(express.json());
 // Admin login route
 app.post('/admin/login', (req, res) => {
   const { password } = req.body;
+  console.log('Login attempt'); // Debug log
   
   if (password !== ADMIN_PASSWORD) {
+    console.log('Invalid password attempt'); // Debug log
     return res.status(401).json({ error: 'Invalid password' });
   }
   
   const token = generateToken();
   validTokens.add(token);
+  console.log('New token generated:', token); // Debug log
   
   // Token expires after 24 hours
   setTimeout(() => {
     validTokens.delete(token);
+    console.log('Token expired:', token); // Debug log
   }, 24 * 60 * 60 * 1000);
   
   res.json({ token });
@@ -62,6 +74,7 @@ app.post('/admin/login', (req, res) => {
 app.post('/admin/logout', verifyAdminToken, (req, res) => {
   const token = req.headers['x-admin-token'];
   validTokens.delete(token);
+  console.log('Token removed on logout:', token); // Debug log
   res.json({ message: 'Logged out successfully' });
 });
 
@@ -77,7 +90,7 @@ app.get('/admin', (req, res) => {
         .login-form { max-width: 300px; margin: 0 auto; }
         input, button { width: 100%; padding: 8px; margin: 10px 0; }
         button { background: #007bff; color: white; border: none; cursor: pointer; }
-        .error { color: red; display: none; }
+        .error { color: red; display: none; margin: 10px 0; }
       </style>
     </head>
     <body>
@@ -91,12 +104,14 @@ app.get('/admin', (req, res) => {
         async function login() {
           const password = document.getElementById('password').value;
           const errorDiv = document.getElementById('error');
+          errorDiv.style.display = 'none';
           
           try {
             const response = await fetch('/admin/login', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ password })
+              body: JSON.stringify({ password }),
+              credentials: 'include'
             });
             
             const data = await response.json();
@@ -104,12 +119,14 @@ app.get('/admin', (req, res) => {
             if (response.ok) {
               // Store token and redirect to dashboard
               localStorage.setItem('adminToken', data.token);
+              console.log('Token stored:', data.token); // Debug log
               window.location.href = '/admin/dashboard';
             } else {
               errorDiv.style.display = 'block';
-              errorDiv.textContent = data.error;
+              errorDiv.textContent = data.error || 'Login failed';
             }
           } catch (error) {
+            console.error('Login error:', error); // Debug log
             errorDiv.style.display = 'block';
             errorDiv.textContent = 'An error occurred. Please try again.';
           }
@@ -133,10 +150,12 @@ app.get('/admin/dashboard', verifyAdminToken, (req, res) => {
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         button { cursor: pointer; }
         .logout { float: right; }
+        #error-message { color: red; display: none; margin: 10px 0; }
       </style>
     </head>
     <body>
       <button onclick="logout()" class="logout">Logout</button>
+      <div id="error-message"></div>
       <h1>Admin Dashboard</h1>
       <h2>All URLs</h2>
       <table>
@@ -174,48 +193,73 @@ app.get('/admin/dashboard', verifyAdminToken, (req, res) => {
         // Check for admin token on page load
         const adminToken = localStorage.getItem('adminToken');
         if (!adminToken) {
+          console.log('No token found, redirecting to login'); // Debug log
           window.location.href = '/admin';
         }
 
-        function deleteUrl(shortId) {
-          fetch('/delete/' + shortId, {
-            method: 'DELETE',
-            headers: {
-              'x-admin-token': adminToken
-            }
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.message) {
-              alert(data.message);
+        // Show error message
+        function showError(message) {
+          const errorDiv = document.getElementById('error-message');
+          errorDiv.style.display = 'block';
+          errorDiv.textContent = message;
+        }
+
+        async function deleteUrl(shortId) {
+          try {
+            const response = await fetch('/delete/' + shortId, {
+              method: 'DELETE',
+              headers: {
+                'x-admin-token': adminToken
+              },
+              credentials: 'include'
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
               window.location.reload();
+            } else {
+              showError(data.error || 'Failed to delete URL');
             }
-          })
-          .catch(error => alert('Error deleting URL: ' + error));
+          } catch (error) {
+            console.error('Delete error:', error); // Debug log
+            showError('Error deleting URL');
+          }
         }
 
         async function logout() {
           try {
-            await fetch('/admin/logout', {
+            const response = await fetch('/admin/logout', {
               method: 'POST',
               headers: {
                 'x-admin-token': adminToken
-              }
+              },
+              credentials: 'include'
             });
-            localStorage.removeItem('adminToken');
-            window.location.href = '/admin';
+            
+            if (response.ok) {
+              localStorage.removeItem('adminToken');
+              window.location.href = '/admin';
+            } else {
+              showError('Logout failed');
+            }
           } catch (error) {
-            console.error('Logout error:', error);
+            console.error('Logout error:', error); // Debug log
+            showError('Error during logout');
           }
         }
 
         // Add token to all fetch requests
         const originalFetch = window.fetch;
         window.fetch = function() {
-          if (arguments[1] && arguments[1].headers) {
-            arguments[1].headers['x-admin-token'] = adminToken;
+          let args = Array.from(arguments);
+          if (args[1] && !args[1].headers) {
+            args[1].headers = {};
           }
-          return originalFetch.apply(this, arguments);
+          if (args[1]) {
+            args[1].headers['x-admin-token'] = adminToken;
+          }
+          return originalFetch.apply(this, args);
         };
       </script>
     </body>
@@ -226,7 +270,6 @@ app.get('/admin/dashboard', verifyAdminToken, (req, res) => {
 });
 
 // Keep your existing routes...
-
 
 
 
