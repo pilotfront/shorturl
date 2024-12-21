@@ -21,7 +21,7 @@ function passwordProtect(req, res, next) {
   // Check for password in the query string
   const { password } = req.query;
 
-  if (password !== '8770380772') {
+  if (password !== 'balu8770380772') {
     return res.status(403).send('<h1>Access Denied</h1><p>Invalid password!</p>');
   }
 
@@ -38,7 +38,7 @@ app.get('/cloudbase', (req, res) => {
   res.send(`
     <script>
       const password = prompt("Enter the cloudbase password:");
-      if (password !== '8770380772') {
+      if (password !== 'balu8770380772') {
         alert('Invalid password.');
         window.location.href = '/'; // Redirect to home if password is invalid
       } else {
