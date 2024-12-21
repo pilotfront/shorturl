@@ -1,58 +1,51 @@
 const express = require('express');
 const session = require('express-session');
-const { nanoid } = require('nanoid');
-const cors = require('cors');
-
 const app = express();
-const urlDatabase = {}; // In-memory storage for shortened URLs
+const port = process.env.PORT || 3000;
 
-// Enable CORS for specific domains
-const corsOptions = {
-  origin: 'https://www.pilotfront.com', // Allow requests only from your Webflow domain
-  methods: 'GET,POST, DELETE', // Allowed HTTP methods
-  allowedHeaders: 'Content-Type', // Allowed headers
-};
+// Example URL database (replace with your actual database)
+const urlDatabase = {};
 
-// Middleware
-app.use(cors(corsOptions)); // Apply CORS settings
-app.use(express.json()); // Parse JSON body
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
+// Set up middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(session({
-  secret: '123', // Use a strong secret key for signing the session ID cookie
+  secret: 'your-secret-key',  // Use a strong secret key for signing the session ID cookie
   resave: false,
   saveUninitialized: true,
-  cookie: { secure: process.env.NODE_ENV === 'production' } // Set secure cookie in production
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // Set secure cookies in production
+  },
 }));
 
-// Home Route
+// Serve the homepage (can be customized)
 app.get('/', (req, res) => {
-  res.send('<h1>URL Shortener</h1><p>Use POST /shorten to create a short URL.</p>');
+  res.send('<h1>Welcome to the URL Shortener!</h1>');
 });
 
-// Admin Route - Password Prompt
+// Admin Login Route (password prompt)
 app.get('/admin', (req, res) => {
   if (req.session.isAuthenticated) {
-    return res.redirect('/admin/dashboard');
+    return res.redirect('/admin/dashboard'); // Redirect to dashboard if authenticated
   }
 
   res.send(`
     <script>
-      // Prompt for password before loading admin page
       const password = prompt("Enter the admin password:");
 
       if (password !== 'abc') {
-        // If password is incorrect, alert and redirect to home
         alert('Invalid password.');
         window.location.href = '/'; // Redirect to home if password is invalid
       } else {
-        // Password is correct, set session and redirect to the dashboard
         fetch('/admin/authenticate', {
           method: 'POST',
-          body: JSON.stringify({ password }),
-          headers: { 'Content-Type': 'application/json' }
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ password })
         })
         .then(() => {
-          window.location.href = '/admin/dashboard'; // Redirect to the admin dashboard
+          window.location.href = '/admin/dashboard'; // Redirect to dashboard if password is correct
         })
         .catch(() => {
           alert('An error occurred.');
@@ -62,27 +55,29 @@ app.get('/admin', (req, res) => {
   `);
 });
 
-// Admin Authentication Route - Set Session
+// Admin Authentication Route (to set session if password is correct)
 app.post('/admin/authenticate', (req, res) => {
   const { password } = req.body;
+
   if (password === 'abc') {
-    req.session.isAuthenticated = true;
-    res.status(200).send();
-  } else {
-    res.status(403).send('Invalid password');
+    req.session.isAuthenticated = true;  // Set session to indicate authentication
+    return res.status(200).send();  // Respond with success
   }
+
+  res.status(403).send('Invalid password');  // Invalid password
 });
 
-// Admin Dashboard Route - Protected Content
+// Admin Dashboard Route (protected)
 app.get('/admin/dashboard', (req, res) => {
   if (!req.session.isAuthenticated) {
-    return res.redirect('/admin'); // If not authenticated, redirect to login page
+    return res.redirect('/admin');  // If not authenticated, redirect to login page
   }
 
   let html = '<h1>Admin Dashboard</h1>';
   html += '<h2>All URLs</h2>';
   html += '<table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>';
 
+  // Populate the URLs in the database
   for (let shortId in urlDatabase) {
     const entry = urlDatabase[shortId];
     html += `<tr>
@@ -97,6 +92,7 @@ app.get('/admin/dashboard', (req, res) => {
 
   html += '</tbody></table>';
 
+  // Form for creating a custom short URL
   html += `
     <h2>Create Custom Short URL</h2>
     <form id="custom-short-form">
@@ -112,16 +108,13 @@ app.get('/admin/dashboard', (req, res) => {
     </form>
     <div id="custom-result"></div>
     <script>
-      // Handle custom short URL creation
       document.getElementById('custom-short-form').addEventListener('submit', function(event) {
         event.preventDefault();
-
         const customShortId = document.getElementById('custom-short-id').value.trim();
         const customOriginalUrl = document.getElementById('custom-original-url').value.trim();
         const customUsername = document.getElementById('custom-username').value.trim();
         const customPassword = document.getElementById('custom-password').value.trim();
 
-        // Validate input
         if (!customShortId || !customOriginalUrl || !customUsername || !customPassword) {
           alert('Please fill all the fields!');
           return;
@@ -166,110 +159,41 @@ app.get('/admin/dashboard', (req, res) => {
     </script>
   `;
 
-  res.send(html);
+  res.send(html);  // Send the admin dashboard content
 });
 
-// New route to handle custom short URL creation
+// URL Creation Route (handle creation of short URLs)
 app.post('/create-custom-short-url', (req, res) => {
   const { shortId, originalUrl, username, password } = req.body;
 
-  // Validate input
   if (!shortId || !originalUrl || !username || !password) {
-    return res.status(400).json({ error: 'All fields are required!' });
+    return res.status(400).json({ error: 'All fields are required' });
   }
 
-  // Check if the custom short ID already exists
-  if (urlDatabase[shortId]) {
-    return res.status(400).json({ error: 'Custom short ID already exists!' });
-  }
-
-  // Add the new URL with the custom short ID to the database
+  // Add the new URL to the database (simplified example)
   urlDatabase[shortId] = {
     originalUrl,
     username,
     password,
-    clicks: 0,
-  };
-
-  // Respond with the newly created short URL
-  res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
-});
-
-// Shorten a URL
-app.post('/shorten', (req, res) => {
-  const { originalUrl, password, username } = req.body;
-
-  // Validate input
-  if (!originalUrl || !password || !username) {
-    return res.status(400).json({ error: 'You must provide a URL, password, and username!' });
-  }
-
-  // Generate short ID and save to database
-  const shortId = nanoid(6);
-  urlDatabase[shortId] = {
-    originalUrl,
-    password,
-    username,
-    clicks: 0,
+    clicks: 0, // Initialize click count
   };
 
   res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
 });
 
-// Redirect to the original URL
-app.get('/:shortId', (req, res) => {
-  const { shortId } = req.params;
-  const entry = urlDatabase[shortId];
-
-  // Check if the entry exists
-  if (!entry) {
-    return res.status(404).send('<h1>404 Not Found</h1>');
-  }
-
-  // Increment click count
-  entry.clicks++;
-
-  // Redirect to the original URL
-  const originalUrl = entry.originalUrl.startsWith('http') 
-    ? entry.originalUrl 
-    : `https://${entry.originalUrl}`;
-  
-  res.redirect(originalUrl);
-});
-
-// Fetch URLs by Password and Username
-app.post('/list', (req, res) => {
-  const { password, username } = req.body;
-
-  if (!password || !username) {
-    return res.status(400).json({ error: 'Password and username are required!' });
-  }
-
-  const urls = Object.entries(urlDatabase)
-    .filter(([key, value]) => value.password === password && value.username === username)
-    .map(([shortId, data]) => ({
-      shortId,
-      originalUrl: data.originalUrl,
-      clicks: data.clicks,
-    }));
-
-  res.json(urls);
-});
-
-// Delete a URL by shortId
+// Delete URL Route
 app.delete('/delete/:shortId', (req, res) => {
   const { shortId } = req.params;
-
-  // Check if the URL exists
-  if (!urlDatabase[shortId]) {
-    return res.status(404).json({ error: 'Short URL not found' });
+  
+  if (urlDatabase[shortId]) {
+    delete urlDatabase[shortId];
+    return res.json({ message: 'URL deleted successfully' });
   }
-
-  // Delete the URL from the database
-  delete urlDatabase[shortId];
-
-  res.json({ message: 'URL deleted successfully' });
+  
+  res.status(404).json({ error: 'URL not found' });
 });
 
 // Start the server
-module.exports = app;
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
