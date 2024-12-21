@@ -1,4 +1,5 @@
 const express = require('express');
+const session = require('express-session');
 const { nanoid } = require('nanoid');
 const cors = require('cors');
 
@@ -12,9 +13,16 @@ const corsOptions = {
   allowedHeaders: 'Content-Type', // Allowed headers
 };
 
+// Middleware
 app.use(cors(corsOptions)); // Apply CORS settings
 app.use(express.json()); // Parse JSON body
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
+app.use(session({
+  secret: '123', // Use a strong secret key for signing the session ID cookie
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: process.env.NODE_ENV === 'production' } // Set secure cookie in production
+}));
 
 // Home Route
 app.get('/', (req, res) => {
@@ -23,11 +31,8 @@ app.get('/', (req, res) => {
 
 // Admin Route - Password Prompt
 app.get('/admin', (req, res) => {
-  // Check if the user is authenticated using the query parameter
-  const isAuthenticated = req.query.authenticated === 'true';
-
-  if (isAuthenticated) {
-    return res.redirect('/admin/dashboard'); // If authenticated, go directly to the dashboard
+  if (req.session.isAuthenticated) {
+    return res.redirect('/admin/dashboard');
   }
 
   res.send(`
@@ -40,19 +45,37 @@ app.get('/admin', (req, res) => {
         alert('Invalid password.');
         window.location.href = '/'; // Redirect to home if password is invalid
       } else {
-        // Password is correct, redirect to dashboard with authenticated flag
-        window.location.href = '/admin/dashboard?authenticated=true'; // Redirect to dashboard with auth query
+        // Password is correct, set session and redirect to the dashboard
+        fetch('/admin/authenticate', {
+          method: 'POST',
+          body: JSON.stringify({ password }),
+          headers: { 'Content-Type': 'application/json' }
+        })
+        .then(() => {
+          window.location.href = '/admin/dashboard'; // Redirect to the admin dashboard
+        })
+        .catch(() => {
+          alert('An error occurred.');
+        });
       }
     </script>
   `);
 });
 
+// Admin Authentication Route - Set Session
+app.post('/admin/authenticate', (req, res) => {
+  const { password } = req.body;
+  if (password === 'abc') {
+    req.session.isAuthenticated = true;
+    res.status(200).send();
+  } else {
+    res.status(403).send('Invalid password');
+  }
+});
+
 // Admin Dashboard Route - Protected Content
 app.get('/admin/dashboard', (req, res) => {
-  // Check if the user is authenticated using the query parameter
-  const isAuthenticated = req.query.authenticated === 'true';
-
-  if (!isAuthenticated) {
+  if (!req.session.isAuthenticated) {
     return res.redirect('/admin'); // If not authenticated, redirect to login page
   }
 
@@ -143,7 +166,6 @@ app.get('/admin/dashboard', (req, res) => {
     </script>
   `;
 
-  // Send the admin content
   res.send(html);
 });
 
