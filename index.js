@@ -8,7 +8,7 @@ const urlDatabase = {}; // In-memory storage for shortened URLs
 // Enable CORS for specific domains
 const corsOptions = {
   origin: 'https://www.pilotfront.com', // Allow requests only from your Webflow domain
-  methods: 'GET,POST, DELETE', // Allowed HTTP methods
+  methods: 'GET,POST,DELETE', // Allowed HTTP methods
   allowedHeaders: 'Content-Type', // Allowed headers
 };
 
@@ -23,17 +23,18 @@ app.get('/', (req, res) => {
 
 // Shorten a URL
 app.post('/shorten', (req, res) => {
-  const { originalUrl, password } = req.body;
+  const { originalUrl, username, password } = req.body;
 
   // Validate input
-  if (!originalUrl || !password) {
-    return res.status(400).json({ error: 'You must provide a URL and a password!' });
+  if (!originalUrl || !username || !password) {
+    return res.status(400).json({ error: 'You must provide a URL, username, and password!' });
   }
 
   // Generate short ID and save to database
   const shortId = nanoid(6);
   urlDatabase[shortId] = {
     originalUrl,
+    username,
     password,
     clicks: 0,
   };
@@ -62,16 +63,16 @@ app.get('/:shortId', (req, res) => {
   res.redirect(originalUrl);
 });
 
-// Fetch URLs by Password
+// Fetch URLs by Username and Password
 app.post('/list', (req, res) => {
-  const { password } = req.body;
+  const { username, password } = req.body;
 
-  if (!password) {
-    return res.status(400).json({ error: 'Password is required!' });
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required!' });
   }
 
   const urls = Object.entries(urlDatabase)
-    .filter(([key, value]) => value.password === password)
+    .filter(([key, value]) => value.username === username && value.password === password)
     .map(([shortId, data]) => ({
       shortId,
       originalUrl: data.originalUrl,
@@ -80,7 +81,6 @@ app.post('/list', (req, res) => {
 
   res.json(urls);
 });
-
 
 // Delete a URL by shortId
 app.delete('/delete/:shortId', (req, res) => {
@@ -96,11 +96,6 @@ app.delete('/delete/:shortId', (req, res) => {
 
   res.json({ message: 'URL deleted successfully' });
 });
-
-
-
-
-
 
 // Start the server
 module.exports = app;
