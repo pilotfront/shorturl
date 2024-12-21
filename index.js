@@ -165,7 +165,6 @@ app.post('/create-custom-short-url', (req, res) => {
 });
 
 // Shorten a URL
-// Shorten a URL
 app.post('/shorten', (req, res) => {
   const { originalUrl, password, username } = req.body;
 
@@ -190,7 +189,7 @@ app.get('/:shortId', (req, res) => {
   const entry = urlDatabase[shortId];
 
   if (!entry) {
-    return res.status(404).send('<h1>404 Not Found</h1>');
+    return res.redirect('https://www.pilotfront.com'); // Redirect 404 errors to www.pilotfront.com
   }
 
   entry.clicks++;
@@ -201,10 +200,11 @@ app.get('/:shortId', (req, res) => {
   res.redirect(originalUrl);
 });
 
-// 404 Handler to redirect
+// Catch-all for 404 errors and redirect
 app.use((req, res, next) => {
   res.redirect('https://www.pilotfront.com');
 });
+
 
 
 // Fetch URLs by Password and Username
