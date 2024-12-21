@@ -200,13 +200,6 @@ app.get('/:shortId', (req, res) => {
   res.redirect(originalUrl);
 });
 
-// Catch-all for 404 errors and redirect
-app.use((req, res, next) => {
-  res.redirect('https://www.pilotfront.com');
-});
-
-
-
 // Fetch URLs by Password and Username
 app.post('/list', (req, res) => {
   const { password, username } = req.body;
@@ -238,13 +231,6 @@ app.delete('/delete/:shortId', (req, res) => {
 
   res.json({ message: 'URL deleted successfully' });
 });
-
-
-// Redirect to www.pilotfront.com if 404
-app.use((req, res, next) => {
-  res.redirect('https://www.pilotfront.com');
-});
-
 
 // Start the server
 module.exports = app;
