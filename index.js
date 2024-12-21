@@ -21,7 +21,85 @@ app.get('/', (req, res) => {
   res.send('<h1>URL Shortener</h1><p>Use POST /shorten to create a short URL.</p>');
 });
 
-// Admin Route - Password Protected
+// Shorten a URL (existing functionality)
+app.post('/shorten', (req, res) => {
+  const { originalUrl, password, username } = req.body;
+
+  // Validate input
+  if (!originalUrl || !password || !username) {
+    return res.status(400).json({ error: 'You must provide a URL, password, and username!' });
+  }
+
+  // Generate short ID and save to database
+  const shortId = nanoid(6);
+  urlDatabase[shortId] = {
+    originalUrl,
+    password,
+    username,
+    clicks: 0,
+  };
+
+  res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
+});
+
+// Redirect to the original URL (existing functionality)
+app.get('/:shortId', (req, res) => {
+  const { shortId } = req.params;
+  const entry = urlDatabase[shortId];
+
+  // Check if the entry exists
+  if (!entry) {
+    return res.status(404).send('<h1>404 Not Found</h1>');
+  }
+
+  // Increment click count
+  entry.clicks++;
+
+  // Redirect to the original URL
+  const originalUrl = entry.originalUrl.startsWith('http') 
+    ? entry.originalUrl 
+    : `https://${entry.originalUrl}`;
+  
+  res.redirect(originalUrl);
+});
+
+// Fetch URLs by Password (existing functionality)
+app.post('/list', (req, res) => {
+  const { password, username } = req.body;
+
+  if (!password || !username) {
+    return res.status(400).json({ error: 'Password and username are required!' });
+  }
+
+  const urls = Object.entries(urlDatabase)
+    .filter(([key, value]) => value.password === password && value.username === username)
+    .map(([shortId, data]) => ({
+      shortId,
+      originalUrl: data.originalUrl,
+      username: data.username,
+      password: data.password,
+      clicks: data.clicks,
+    }));
+
+  res.json(urls);
+});
+
+// Delete a URL by shortId (existing functionality)
+app.delete('/delete/:shortId', (req, res) => {
+  const { shortId } = req.params;
+
+  // Check if the URL exists
+  if (!urlDatabase[shortId]) {
+    return res.status(404).json({ error: 'Short URL not found' });
+  }
+
+  // Delete the URL from the database
+  delete urlDatabase[shortId];
+
+  res.json({ message: 'URL deleted successfully' });
+});
+
+// Admin Route - Password Protected (new functionality)
 app.get('/admin', (req, res) => {
   const password = req.query.password;
 
@@ -46,97 +124,104 @@ app.get('/admin', (req, res) => {
   }
 
   html += '</tbody></table>';
-  html += `<script>
-    function deleteUrl(shortId) {
-      fetch('/delete/' + shortId, { method: 'DELETE' })
+
+  // Form for creating a custom short URL
+  html += `
+    <h2>Create Custom Short URL</h2>
+    <form id="custom-short-form">
+      <label for="custom-short-id">Custom Short ID:</label>
+      <input type="text" id="custom-short-id" required>
+      <label for="custom-original-url">Original URL:</label>
+      <input type="url" id="custom-original-url" required>
+      <label for="custom-username">Username:</label>
+      <input type="text" id="custom-username" required>
+      <label for="custom-password">Password:</label>
+      <input type="password" id="custom-password" required>
+      <button type="submit">Create Custom Short URL</button>
+    </form>
+    <div id="custom-result"></div>
+    <script>
+      // Handle custom short URL creation
+      document.getElementById('custom-short-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        
+        const customShortId = document.getElementById('custom-short-id').value.trim();
+        const customOriginalUrl = document.getElementById('custom-original-url').value.trim();
+        const customUsername = document.getElementById('custom-username').value.trim();
+        const customPassword = document.getElementById('custom-password').value.trim();
+        
+        // Validate input
+        if (!customShortId || !customOriginalUrl || !customUsername || !customPassword) {
+          alert('Please fill all the fields!');
+          return;
+        }
+        
+        fetch('/create-custom-short-url', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            shortId: customShortId,
+            originalUrl: customOriginalUrl,
+            username: customUsername,
+            password: customPassword,
+          }),
+        })
         .then(response => response.json())
         .then(data => {
-          if (data.message) {
-            alert(data.message);
-            window.location.reload();
+          if (data.shortUrl) {
+            document.getElementById('custom-result').innerHTML = 'Custom Short URL Created: <a href="' + data.shortUrl + '" target="_blank">' + data.shortUrl + '</a>';
+          } else if (data.error) {
+            document.getElementById('custom-result').innerHTML = 'Error: ' + data.error;
           }
         })
-        .catch(error => alert('Error deleting URL: ' + error));
-    }
-  </script>`;
+        .catch(error => {
+          console.error('Error:', error);
+        });
+      });
+
+      function deleteUrl(shortId) {
+        fetch('/delete/' + shortId, { method: 'DELETE' })
+          .then(response => response.json())
+          .then(data => {
+            if (data.message) {
+              alert(data.message);
+              window.location.reload();
+            }
+          })
+          .catch(error => alert('Error deleting URL: ' + error));
+      }
+    </script>
+  `;
 
   res.send(html);
 });
 
-// Shorten a URL
-app.post('/shorten', (req, res) => {
-  const { originalUrl, password, username } = req.body;
+// New route to handle custom short URL creation (new functionality)
+app.post('/create-custom-short-url', (req, res) => {
+  const { shortId, originalUrl, username, password } = req.body;
 
   // Validate input
-  if (!originalUrl || !password || !username) {
-    return res.status(400).json({ error: 'You must provide a URL, password, and username!' });
+  if (!shortId || !originalUrl || !username || !password) {
+    return res.status(400).json({ error: 'All fields are required!' });
   }
 
-  // Generate short ID and save to database
-  const shortId = nanoid(6);
+  // Check if the custom short ID already exists
+  if (urlDatabase[shortId]) {
+    return res.status(400).json({ error: 'Custom short ID already exists!' });
+  }
+
+  // Add the new URL with the custom short ID to the database
   urlDatabase[shortId] = {
     originalUrl,
-    password,
     username,
+    password,
     clicks: 0,
   };
 
+  // Respond with the newly created short URL
   res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
-});
-
-// Redirect to the original URL
-app.get('/:shortId', (req, res) => {
-  const { shortId } = req.params;
-  const entry = urlDatabase[shortId];
-
-  // Check if the entry exists
-  if (!entry) {
-    return res.status(404).send('<h1>404 Not Found</h1>');
-  }
-
-  // Increment click count
-  entry.clicks++;
-
-  // Redirect to the original URL
-  const originalUrl = entry.originalUrl.startsWith('http') 
-    ? entry.originalUrl 
-    : `https://${entry.originalUrl}`;
-  
-  res.redirect(originalUrl);
-});
-
-// Fetch URLs by Password and Username
-app.post('/list', (req, res) => {
-  const { password, username } = req.body;
-
-  if (!password || !username) {
-    return res.status(400).json({ error: 'Password and username are required!' });
-  }
-
-  const urls = Object.entries(urlDatabase)
-    .filter(([key, value]) => value.password === password && value.username === username)
-    .map(([shortId, data]) => ({
-      shortId,
-      originalUrl: data.originalUrl,
-      clicks: data.clicks,
-    }));
-
-  res.json(urls);
-});
-
-// Delete a URL by shortId
-app.delete('/delete/:shortId', (req, res) => {
-  const { shortId } = req.params;
-
-  // Check if the URL exists
-  if (!urlDatabase[shortId]) {
-    return res.status(404).json({ error: 'Short URL not found' });
-  }
-
-  // Delete the URL from the database
-  delete urlDatabase[shortId];
-
-  res.json({ message: 'URL deleted successfully' });
 });
 
 // Start the server
