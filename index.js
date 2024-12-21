@@ -1,156 +1,56 @@
 const express = require('express');
 const { nanoid } = require('nanoid');
 const cors = require('cors');
-const crypto = require('crypto');
-const session = require('express-session');
 
 const app = express();
 const urlDatabase = {}; // In-memory storage for shortened URLs
 
-// Session configuration
-const sessionConfig = {
-  secret: crypto.randomBytes(32).toString('hex'), // Random session secret on each server start
-  name: 'sessionId', // Custom session cookie name
-  cookie: {
-    httpOnly: true, // Prevents client-side access to cookie
-    secure: true, // Only transmitted over HTTPS
-    sameSite: 'strict', // Protects against CSRF
-    maxAge: 1800000 // 30 minutes session timeout
-  },
-  resave: false,
-  saveUninitialized: false
-};
-
 // Enable CORS for specific domains
 const corsOptions = {
-  origin: 'https://www.pilotfront.com',
-  methods: 'GET,POST, DELETE',
-  allowedHeaders: 'Content-Type',
-  credentials: true // Required for cookies
+  origin: 'https://www.pilotfront.com', // Allow requests only from your Webflow domain
+  methods: 'GET,POST, DELETE', // Allowed HTTP methods
+  allowedHeaders: 'Content-Type', // Allowed headers
 };
 
 // Middleware
-app.use(cors(corsOptions));
-app.use(express.json());
-app.use(session(sessionConfig));
+app.use(cors(corsOptions)); // Apply CORS settings
+app.use(express.json()); // Parse JSON body
 
-// Constant-time string comparison to prevent timing attacks
-const secureCompare = (a, b) => {
-  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
-};
+// Home Route
+app.get('/', (req, res) => {
+  res.send('<h1>URL Shortener</h1><p>Use POST /shorten to create a short URL.</p>');
+});
 
-// Generate a strong hash for password comparison
-const hashPassword = (password) => {
-  return crypto
-    .createHash('sha256')
-    .update(password)
-    .digest('hex');
-};
-
-// Admin authentication middleware
-const authenticateAdmin = (req, res, next) => {
-  const urlPassword = req.query.password;
-  
-  // Allow URL-based authentication to maintain compatibility
-  if (urlPassword && secureCompare(hashPassword(urlPassword), hashPassword('abc'))) {
-    req.session.isAuthenticated = true;
-    return next();
-  }
-  
-  // Check session authentication
-  if (req.session.isAuthenticated) {
-    return next();
-  }
-
-  // If no valid authentication, check for AJAX request
-  if (req.xhr || req.headers.accept.indexOf('json') > -1) {
-    return res.status(403).json({ error: 'Authentication required' });
-  }
-
-  // Show login page
+// Admin Route - Password Protected
+// Admin Route - Password Protected
+// Admin Route - Password Protected
+app.get('/admin', (req, res) => {
+  // Prompt for password before displaying the admin page content.
   res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Admin Login</title>
-      <style>
-        .login-container {
-          max-width: 400px;
-          margin: 50px auto;
-          padding: 20px;
-          border: 1px solid #ccc;
-          border-radius: 5px;
-        }
-        .error { color: red; display: none; }
-      </style>
-    </head>
-    <body>
-      <div class="login-container">
-        <h2>Admin Login</h2>
-        <div id="error" class="error"></div>
-        <form id="loginForm">
-          <input type="password" id="password" placeholder="Enter password" required>
-          <button type="submit">Login</button>
-        </form>
-      </div>
-      <script>
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-          e.preventDefault();
-          const password = document.getElementById('password').value;
-          
-          try {
-            const response = await fetch('/admin/login', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ password }),
-              credentials: 'include'
-            });
-            
-            if (response.ok) {
-              window.location.href = '/admin';
-            } else {
-              const error = await response.json();
-              document.getElementById('error').textContent = error.message;
-              document.getElementById('error').style.display = 'block';
-            }
-          } catch (err) {
-            document.getElementById('error').textContent = 'An error occurred';
-            document.getElementById('error').style.display = 'block';
-          }
-        });
-      </script>
-    </body>
-    </html>
+    <script>
+      // Prompt for password before loading admin page
+      const password = prompt("Enter the admin password:");
+
+      if (password !== 'abc') {
+        // If password is incorrect, alert and redirect to home
+        alert('Invalid password.');
+        window.location.href = '/'; // Redirect to home if password is invalid
+      } else {
+        // Password is correct, fetch and display the admin content
+        window.location.href = '/admin/dashboard'; // Redirect to a separate route to show the admin dashboard
+      }
+    </script>
   `);
-};
-
-// Login endpoint
-app.post('/admin/login', (req, res) => {
-  const { password } = req.body;
-  
-  if (secureCompare(hashPassword(password), hashPassword('abc'))) {
-    req.session.isAuthenticated = true;
-    res.json({ success: true });
-  } else {
-    res.status(403).json({ message: 'Invalid password' });
-  }
 });
 
-// Logout endpoint
-app.post('/admin/logout', (req, res) => {
-  req.session.destroy();
-  res.json({ success: true });
-});
-
-// Protected admin route
-app.get('/admin', authenticateAdmin, (req, res) => {
-  let html = '<h1>Admin Page</h1>';
-  html += '<div style="text-align: right;"><button onclick="logout()">Logout</button></div>';
+// Admin Dashboard Route - Protected Content
+app.get('/admin/dashboard', (req, res) => {
+  // This route is only accessible after the password prompt is validated
+  let html = '<h1>Admin Dashboard</h1>';
   html += '<h2>All URLs</h2>';
   html += '<table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>';
 
+  // Populate the URLs in the database
   for (let shortId in urlDatabase) {
     const entry = urlDatabase[shortId];
     html += `<tr>
@@ -184,17 +84,18 @@ app.get('/admin', authenticateAdmin, (req, res) => {
       // Handle custom short URL creation
       document.getElementById('custom-short-form').addEventListener('submit', function(event) {
         event.preventDefault();
-        
+
         const customShortId = document.getElementById('custom-short-id').value.trim();
         const customOriginalUrl = document.getElementById('custom-original-url').value.trim();
         const customUsername = document.getElementById('custom-username').value.trim();
         const customPassword = document.getElementById('custom-password').value.trim();
-        
+
+        // Validate input
         if (!customShortId || !customOriginalUrl || !customUsername || !customPassword) {
           alert('Please fill all the fields!');
           return;
         }
-        
+
         fetch('/create-custom-short-url', {
           method: 'POST',
           headers: {
@@ -206,7 +107,6 @@ app.get('/admin', authenticateAdmin, (req, res) => {
             username: customUsername,
             password: customPassword,
           }),
-          credentials: 'include'
         })
         .then(response => response.json())
         .then(data => {
@@ -222,10 +122,7 @@ app.get('/admin', authenticateAdmin, (req, res) => {
       });
 
       function deleteUrl(shortId) {
-        fetch('/delete/' + shortId, { 
-          method: 'DELETE',
-          credentials: 'include'
-        })
+        fetch('/delete/' + shortId, { method: 'DELETE' })
           .then(response => response.json())
           .then(data => {
             if (data.message) {
@@ -235,20 +132,118 @@ app.get('/admin', authenticateAdmin, (req, res) => {
           })
           .catch(error => alert('Error deleting URL: ' + error));
       }
-
-      function logout() {
-        fetch('/admin/logout', {
-          method: 'POST',
-          credentials: 'include'
-        })
-        .then(() => window.location.href = '/admin');
-      }
     </script>
   `;
 
+  // Send the admin content
   res.send(html);
 });
 
-// Rest of your routes remain unchanged...
 
+
+
+// New route to handle custom short URL creation
+app.post('/create-custom-short-url', (req, res) => {
+  const { shortId, originalUrl, username, password } = req.body;
+
+  // Validate input
+  if (!shortId || !originalUrl || !username || !password) {
+    return res.status(400).json({ error: 'All fields are required!' });
+  }
+
+  // Check if the custom short ID already exists
+  if (urlDatabase[shortId]) {
+    return res.status(400).json({ error: 'Custom short ID already exists!' });
+  }
+
+  // Add the new URL with the custom short ID to the database
+  urlDatabase[shortId] = {
+    originalUrl,
+    username,
+    password,
+    clicks: 0,
+  };
+
+  // Respond with the newly created short URL
+  res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
+});
+
+
+// Shorten a URL
+app.post('/shorten', (req, res) => {
+  const { originalUrl, password, username } = req.body;
+
+  // Validate input
+  if (!originalUrl || !password || !username) {
+    return res.status(400).json({ error: 'You must provide a URL, password, and username!' });
+  }
+
+  // Generate short ID and save to database
+  const shortId = nanoid(6);
+  urlDatabase[shortId] = {
+    originalUrl,
+    password,
+    username,
+    clicks: 0,
+  };
+
+  res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
+});
+
+// Redirect to the original URL
+app.get('/:shortId', (req, res) => {
+  const { shortId } = req.params;
+  const entry = urlDatabase[shortId];
+
+  // Check if the entry exists
+  if (!entry) {
+    return res.status(404).send('<h1>404 Not Found</h1>');
+  }
+
+  // Increment click count
+  entry.clicks++;
+
+  // Redirect to the original URL
+  const originalUrl = entry.originalUrl.startsWith('http') 
+    ? entry.originalUrl 
+    : `https://${entry.originalUrl}`;
+  
+  res.redirect(originalUrl);
+});
+
+// Fetch URLs by Password and Username
+app.post('/list', (req, res) => {
+  const { password, username } = req.body;
+
+  if (!password || !username) {
+    return res.status(400).json({ error: 'Password and username are required!' });
+  }
+
+  const urls = Object.entries(urlDatabase)
+    .filter(([key, value]) => value.password === password && value.username === username)
+    .map(([shortId, data]) => ({
+      shortId,
+      originalUrl: data.originalUrl,
+      clicks: data.clicks,
+    }));
+
+  res.json(urls);
+});
+
+// Delete a URL by shortId
+app.delete('/delete/:shortId', (req, res) => {
+  const { shortId } = req.params;
+
+  // Check if the URL exists
+  if (!urlDatabase[shortId]) {
+    return res.status(404).json({ error: 'Short URL not found' });
+  }
+
+  // Delete the URL from the database
+  delete urlDatabase[shortId];
+
+  res.json({ message: 'URL deleted successfully' });
+});
+
+// Start the server
 module.exports = app;
