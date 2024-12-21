@@ -10,10 +10,11 @@ const ADMIN_PASSWORD = "abc";
 
 // Enable CORS for specific domains
 const corsOptions = {
-  origin: 'https://www.pilotfront.com', // Allow requests only from your Webflow domain
-  methods: 'GET,POST,DELETE', // Allowed HTTP methods
-  allowedHeaders: 'Content-Type', // Allowed headers
+  origin: ['https://www.pilotfront.com', 'https://www.pilotfront.click'], // Allow both domains
+  methods: 'GET,POST,DELETE',
+  allowedHeaders: 'Content-Type',
 };
+
 
 // Middleware
 app.use(cors(corsOptions)); // Apply CORS settings
