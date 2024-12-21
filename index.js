@@ -21,7 +21,7 @@ function passwordProtect(req, res, next) {
   // Check for password in the query string
   const { password } = req.query;
 
-  if (password !== 'abc') {
+  if (password !== '8770380772@#') {
     return res.status(403).send('<h1>Access Denied</h1><p>Invalid password!</p>');
   }
 
