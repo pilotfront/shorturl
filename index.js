@@ -7,7 +7,7 @@ const app = express();
 const urlDatabase = {}; // In-memory storage for shortened URLs
 
 // Store admin credentials securely (in production, use environment variables)
-const ADMIN_PASSWORD = 'your_secure_password_here'; // Change this to your desired password
+const ADMIN_PASSWORD = '123'; // Change this to your desired password
 const TOKEN_SECRET = crypto.randomBytes(64).toString('hex');
 
 // Store valid tokens (in production, use Redis or similar)
