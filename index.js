@@ -64,7 +64,7 @@ app.get('/admin', (req, res) => {
       // Prompt for password before loading admin page
       const password = prompt("Enter the admin password:");
 
-      if (password !== 'abc') {
+      if (password !== '8770380772@#') {
         alert('Invalid password.');
         window.location.href = '/';
       }
