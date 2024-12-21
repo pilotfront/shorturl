@@ -13,7 +13,7 @@ app.use((err, req, res, next) => {
 });
 
 // Store admin credentials securely
-const ADMIN_PASSWORD = 'your_secure_password_here'; // Change this!
+const ADMIN_PASSWORD = '123'; // Change this!
 const validTokens = new Set();
 
 // CORS configuration
