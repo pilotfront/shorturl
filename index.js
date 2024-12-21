@@ -5,9 +5,6 @@ const cors = require('cors');
 const app = express();
 const urlDatabase = {}; // In-memory storage for shortened URLs
 
-// Password for admin access
-const adminPassword = 'abc'; 
-
 // Enable CORS for specific domains
 const corsOptions = {
   origin: 'https://www.pilotfront.com', // Allow requests only from your Webflow domain
@@ -22,6 +19,48 @@ app.use(express.json()); // Parse JSON body
 // Home Route
 app.get('/', (req, res) => {
   res.send('<h1>URL Shortener</h1><p>Use POST /shorten to create a short URL.</p>');
+});
+
+// Admin Route - Password Protected
+app.get('/admin', (req, res) => {
+  const password = req.query.password;
+
+  if (password !== 'abc') {
+    return res.status(403).send('<h1>Forbidden</h1><p>Invalid password.</p>');
+  }
+
+  let html = '<h1>Admin Page</h1>';
+  html += '<h2>All URLs</h2>';
+  html += '<table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>';
+
+  for (let shortId in urlDatabase) {
+    const entry = urlDatabase[shortId];
+    html += `<tr>
+      <td><a href="https://${req.headers.host}/${shortId}" target="_blank">${shortId}</a></td>
+      <td><a href="${entry.originalUrl}" target="_blank">${entry.originalUrl}</a></td>
+      <td>${entry.username}</td>
+      <td>${entry.password}</td>
+      <td>${entry.clicks}</td>
+      <td><button onclick="deleteUrl('${shortId}')">Delete</button></td>
+    </tr>`;
+  }
+
+  html += '</tbody></table>';
+  html += `<script>
+    function deleteUrl(shortId) {
+      fetch('/delete/' + shortId, { method: 'DELETE' })
+        .then(response => response.json())
+        .then(data => {
+          if (data.message) {
+            alert(data.message);
+            window.location.reload();
+          }
+        })
+        .catch(error => alert('Error deleting URL: ' + error));
+    }
+  </script>`;
+
+  res.send(html);
 });
 
 // Shorten a URL
@@ -64,69 +103,6 @@ app.get('/:shortId', (req, res) => {
     : `https://${entry.originalUrl}`;
   
   res.redirect(originalUrl);
-});
-
-// Fetch URLs by Password
-app.post('/list', (req, res) => {
-  const { password } = req.body;
-
-  if (!password) {
-    return res.status(400).json({ error: 'Password is required!' });
-  }
-
-  const urls = Object.entries(urlDatabase)
-    .filter(([key, value]) => value.password === password)
-    .map(([shortId, data]) => ({
-      shortId,
-      originalUrl: data.originalUrl,
-      username: data.username,
-      password: data.password,
-      clicks: data.clicks,
-    }));
-
-  res.json(urls);
-});
-
-// Admin Page (Password Protected)
-app.get('/admin', (req, res) => {
-  const password = req.query.password;
-
-  if (password !== adminPassword) {
-    return res.status(403).send('Forbidden: Invalid password');
-  }
-
-  let html = '<h1>Admin Page</h1>';
-  html += '<h2>All URLs</h2>';
-  html += '<table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>';
-
-  for (let shortId in urlDatabase) {
-    const entry = urlDatabase[shortId];
-    html += `<tr>
-      <td><a href="https://${req.headers.host}/${shortId}" target="_blank">${shortId}</a></td>
-      <td><a href="${entry.originalUrl}" target="_blank">${entry.originalUrl}</a></td>
-      <td>${entry.username}</td>
-      <td>${entry.password}</td>
-      <td>${entry.clicks}</td>
-      <td><button onclick="deleteUrl('${shortId}')">Delete</button></td>
-    </tr>`;
-  }
-
-  html += '</tbody></table>';
-  html += `<script>
-    function deleteUrl(shortId) {
-      fetch('/delete/' + shortId, { method: 'DELETE' })
-        .then(response => response.json())
-        .then(data => {
-          if (data.message) {
-            alert(data.message);
-            window.location.reload();
-          }
-        })
-        .catch(error => alert('Error deleting URL: ' + error));
-    }
-  </script>`;
-
-  res.send(html);
 });
 
 // Delete a URL by shortId
