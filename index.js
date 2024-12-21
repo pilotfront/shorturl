@@ -136,5 +136,16 @@ app.delete('/admin/delete/:shortId', (req, res) => {
   res.json({ message: 'URL deleted successfully' });
 });
 
+
+
+const path = require('path');
+
+// Serve admin.html for /admin route
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+
+
 // Start the server
 module.exports = app;
