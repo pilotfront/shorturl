@@ -138,7 +138,7 @@ app.get('/admin', (req, res) => {
 });
 
 // Secure admin dashboard route
-app.get('/admin/dashboard', verifyAdminToken, (req, res) => {
+app.get('/admin/dashboard', (req, res) => {
   let html = `
     <!DOCTYPE html>
     <html>
@@ -151,116 +151,140 @@ app.get('/admin/dashboard', verifyAdminToken, (req, res) => {
         button { cursor: pointer; }
         .logout { float: right; }
         #error-message { color: red; display: none; margin: 10px 0; }
+        .loading { display: none; }
       </style>
     </head>
     <body>
-      <button onclick="logout()" class="logout">Logout</button>
-      <div id="error-message"></div>
-      <h1>Admin Dashboard</h1>
-      <h2>All URLs</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Short URL</th>
-            <th>Original URL</th>
-            <th>Username</th>
-            <th>Password</th>
-            <th>Click Count</th>
-            <th>Delete</th>
-          </tr>
-        </thead>
-        <tbody>
-  `;
+      <div id="login-check" class="loading">Verifying authentication...</div>
+      <div id="content" style="display: none;">
+        <button onclick="logout()" class="logout">Logout</button>
+        <div id="error-message"></div>
+        <h1>Admin Dashboard</h1>
+        <h2>All URLs</h2>
+        <table id="urls-table">
+          <thead>
+            <tr>
+              <th>Short URL</th>
+              <th>Original URL</th>
+              <th>Username</th>
+              <th>Password</th>
+              <th>Click Count</th>
+              <th>Delete</th>
+            </tr>
+          </thead>
+          <tbody id="urls-body">
+          </tbody>
+        </table>
+      </div>
 
-  for (let shortId in urlDatabase) {
-    const entry = urlDatabase[shortId];
-    html += `
-      <tr>
-        <td><a href="https://${req.headers.host}/${shortId}" target="_blank">${shortId}</a></td>
-        <td><a href="${entry.originalUrl}" target="_blank">${entry.originalUrl}</a></td>
-        <td>${entry.username}</td>
-        <td>${entry.password}</td>
-        <td>${entry.clicks}</td>
-        <td><button onclick="deleteUrl('${shortId}')">Delete</button></td>
-      </tr>
-    `;
-  }
-
-  html += `
-        </tbody>
-      </table>
       <script>
-        // Check for admin token on page load
-        const adminToken = localStorage.getItem('adminToken');
-        if (!adminToken) {
-          console.log('No token found, redirecting to login'); // Debug log
-          window.location.href = '/admin';
+        // Check authentication and load data
+        async function init() {
+          const adminToken = localStorage.getItem('adminToken');
+          
+          if (!adminToken) {
+            window.location.href = '/admin';
+            return;
+          }
+
+          try {
+            // Verify token first
+            const response = await fetch('/admin/verify', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-admin-token': adminToken
+              }
+            });
+
+            if (!response.ok) {
+              throw new Error('Authentication failed');
+            }
+
+            // If token is valid, load the URLs
+            const urlsResponse = await fetch('/admin/urls', {
+              headers: {
+                'x-admin-token': adminToken
+              }
+            });
+
+            if (!urlsResponse.ok) {
+              throw new Error('Failed to load URLs');
+            }
+
+            const urls = await urlsResponse.json();
+            displayUrls(urls);
+            
+            document.getElementById('login-check').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+          } catch (error) {
+            console.error('Authentication error:', error);
+            localStorage.removeItem('adminToken');
+            window.location.href = '/admin';
+          }
         }
 
-        // Show error message
+        function displayUrls(urls) {
+          const tbody = document.getElementById('urls-body');
+          tbody.innerHTML = '';
+          
+          Object.entries(urls).forEach(([shortId, entry]) => {
+            const row = document.createElement('tr');
+            row.innerHTML = \`
+              <td><a href="/${shortId}" target="_blank">${shortId}</a></td>
+              <td><a href="\${entry.originalUrl}" target="_blank">\${entry.originalUrl}</a></td>
+              <td>\${entry.username}</td>
+              <td>\${entry.password}</td>
+              <td>\${entry.clicks}</td>
+              <td><button onclick="deleteUrl('\${shortId}')">Delete</button></td>
+            \`;
+            tbody.appendChild(row);
+          });
+        }
+
+        async function deleteUrl(shortId) {
+          const adminToken = localStorage.getItem('adminToken');
+          try {
+            const response = await fetch('/delete/' + shortId, {
+              method: 'DELETE',
+              headers: {
+                'x-admin-token': adminToken
+              }
+            });
+            
+            if (!response.ok) {
+              throw new Error('Failed to delete URL');
+            }
+
+            await init(); // Reload the URLs
+          } catch (error) {
+            showError('Error deleting URL: ' + error.message);
+          }
+        }
+
+        async function logout() {
+          const adminToken = localStorage.getItem('adminToken');
+          try {
+            await fetch('/admin/logout', {
+              method: 'POST',
+              headers: {
+                'x-admin-token': adminToken
+              }
+            });
+          } finally {
+            localStorage.removeItem('adminToken');
+            window.location.href = '/admin';
+          }
+        }
+
         function showError(message) {
           const errorDiv = document.getElementById('error-message');
           errorDiv.style.display = 'block';
           errorDiv.textContent = message;
         }
 
-        async function deleteUrl(shortId) {
-          try {
-            const response = await fetch('/delete/' + shortId, {
-              method: 'DELETE',
-              headers: {
-                'x-admin-token': adminToken
-              },
-              credentials: 'include'
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-              window.location.reload();
-            } else {
-              showError(data.error || 'Failed to delete URL');
-            }
-          } catch (error) {
-            console.error('Delete error:', error); // Debug log
-            showError('Error deleting URL');
-          }
-        }
-
-        async function logout() {
-          try {
-            const response = await fetch('/admin/logout', {
-              method: 'POST',
-              headers: {
-                'x-admin-token': adminToken
-              },
-              credentials: 'include'
-            });
-            
-            if (response.ok) {
-              localStorage.removeItem('adminToken');
-              window.location.href = '/admin';
-            } else {
-              showError('Logout failed');
-            }
-          } catch (error) {
-            console.error('Logout error:', error); // Debug log
-            showError('Error during logout');
-          }
-        }
-
-        // Add token to all fetch requests
-        const originalFetch = window.fetch;
-        window.fetch = function() {
-          let args = Array.from(arguments);
-          if (args[1] && !args[1].headers) {
-            args[1].headers = {};
-          }
-          if (args[1]) {
-            args[1].headers['x-admin-token'] = adminToken;
-          }
-          return originalFetch.apply(this, args);
-        };
+        // Initialize the dashboard
+        init();
       </script>
     </body>
     </html>
@@ -268,7 +292,6 @@ app.get('/admin/dashboard', verifyAdminToken, (req, res) => {
 
   res.send(html);
 });
-
 // Keep your existing routes...
 
 
