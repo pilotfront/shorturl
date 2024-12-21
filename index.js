@@ -24,61 +24,165 @@ app.get('/', (req, res) => {
 // Admin Route - Password Protected
 // Admin Route - Password Protected
 app.get('/admin', (req, res) => {
-  let html = `
-    <html>
-      <head>
-        <title>Admin Page</title>
-        <script>
-          // Prompt for the password
-          function promptPassword() {
-            const password = prompt("Please enter the admin password:");
-            if (password === null || password === "") {
-              alert("Password is required.");
-              return;
+  try {
+    let html = `
+      <html>
+        <head>
+          <title>Admin Page</title>
+          <script>
+            // Prompt for the password
+            function promptPassword() {
+              const password = prompt("Please enter the admin password:");
+              if (password === null || password === "") {
+                alert("Password is required.");
+                return;
+              }
+
+              // Send the password to the server for validation
+              fetch('/validate-password', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ password: password }),
+              })
+              .then(response => response.json())
+              .then(data => {
+                if (data.valid) {
+                  window.location.href = '/admin-dashboard'; // Redirect to the actual admin page
+                } else {
+                  alert("Invalid password.");
+                }
+              })
+              .catch(error => alert("Error validating password: " + error));
             }
 
-            // Send the password to the server for validation
-            fetch('/validate-password', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ password: password }),
-            })
-            .then(response => response.json())
-            .then(data => {
-              if (data.valid) {
-                window.location.href = '/admin-dashboard'; // Redirect to the actual admin page
-              } else {
-                alert("Invalid password.");
-              }
-            })
-            .catch(error => alert("Error validating password: " + error));
-          }
+            // Call the password prompt when the page loads
+            window.onload = promptPassword;
+          </script>
+        </head>
+        <body>
+          <h1>Admin Page</h1>
+          <p>Please wait while we verify your credentials...</p>
+        </body>
+      </html>
+    `;
 
-          // Call the password prompt when the page loads
-          window.onload = promptPassword;
-        </script>
-      </head>
-      <body>
-        <h1>Admin Page</h1>
-        <p>Please wait while we verify your credentials...</p>
-      </body>
-    </html>
-  `;
-
-  res.send(html);
+    res.send(html);
+  } catch (error) {
+    console.error('Error in /admin route:', error);
+    res.status(500).send('Internal Server Error');
+  }
 });
 
 // Route to validate the password
 app.post('/validate-password', (req, res) => {
-  const { password } = req.body;
+  try {
+    const { password } = req.body;
 
-  if (password === 'abc') {
-    return res.json({ valid: true });
+    if (password === 'abc') {
+      return res.json({ valid: true });
+    }
+
+    return res.json({ valid: false });
+  } catch (error) {
+    console.error('Error in /validate-password route:', error);
+    res.status(500).send('Internal Server Error');
   }
+});
 
-  return res.json({ valid: false });
+// Admin Dashboard Route
+app.get('/admin-dashboard', (req, res) => {
+  try {
+    let html = '<h1>Admin Page</h1>';
+    html += '<h2>All URLs</h2>';
+    html += '<table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>';
+
+    for (let shortId in urlDatabase) {
+      const entry = urlDatabase[shortId];
+      html += `
+        <tr>
+          <td><a href="https://${req.headers.host}/${shortId}" target="_blank">${shortId}</a></td>
+          <td><a href="${entry.originalUrl}" target="_blank">${entry.originalUrl}</a></td>
+          <td>${entry.username}</td>
+          <td>${entry.password}</td>
+          <td>${entry.clicks}</td>
+          <td><button onclick="deleteUrl('${shortId}')">Delete</button></td>
+        </tr>
+      `;
+    }
+
+    html += '</tbody></table>';
+
+    // Form for creating a custom short URL
+    html += `
+      <h2>Create Custom Short URL</h2>
+      <form id="custom-short-form">
+        <label for="custom-short-id">Custom Short ID:</label>
+        <input type="text" id="custom-short-id" required>
+        <label for="custom-original-url">Original URL:</label>
+        <input type="url" id="custom-original-url" required>
+        <label for="custom-username">Username:</label>
+        <input type="text" id="custom-username" required>
+        <label for="custom-password">Password:</label>
+        <input type="password" id="custom-password" required>
+        <button type="submit">Create Custom Short URL</button>
+      </form>
+      <div id="custom-result"></div>
+      <script>
+        document.getElementById('custom-short-form').addEventListener('submit', function(event) {
+          event.preventDefault();
+          
+          const customShortId = document.getElementById('custom-short-id').value.trim();
+          const customOriginalUrl = document.getElementById('custom-original-url').value.trim();
+          const customUsername = document.getElementById('custom-username').value.trim();
+          const customPassword = document.getElementById('custom-password').value.trim();
+          
+          if (!customShortId || !customOriginalUrl || !customUsername || !customPassword) {
+            alert('Please fill all the fields!');
+            return;
+          }
+          
+          fetch('/create-custom-short-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              shortId: customShortId,
+              originalUrl: customOriginalUrl,
+              username: customUsername,
+              password: customPassword,
+            }),
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.shortUrl) {
+              document.getElementById('custom-result').innerHTML = 'Custom Short URL Created: <a href="' + data.shortUrl + '" target="_blank">' + data.shortUrl + '</a>';
+            } else if (data.error) {
+              document.getElementById('custom-result').innerHTML = 'Error: ' + data.error;
+            }
+          })
+          .catch(error => console.error('Error:', error));
+        });
+
+        function deleteUrl(shortId) {
+          fetch('/delete/' + shortId, { method: 'DELETE' })
+            .then(response => response.json())
+            .then(data => {
+              if (data.message) {
+                alert(data.message);
+                window.location.reload();
+              }
+            })
+            .catch(error => alert('Error deleting URL: ' + error));
+        }
+      </script>
+    `;
+    
+    res.send(html);
+  } catch (error) {
+    console.error('Error in /admin-dashboard route:', error);
+    res.status(500).send('Internal Server Error');
+  }
 });
 
 // Admin Dashboard Route
