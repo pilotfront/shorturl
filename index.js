@@ -26,38 +26,10 @@ app.get('/', (req, res) => {
 app.get('/admin', (req, res) => {
   let html = `
     <h1>Admin Page</h1>
-    <p>Please enter the password to access the admin page.</p>
-    <script>
-      // Prompt for password before loading the actual content
-      const password = prompt("Enter the admin password:");
-
-      if (password !== 'abc') {
-        alert('Invalid password.');
-        window.location.href = '/'; // Redirect to home if the password is incorrect
-      } else {
-        // Password is correct, reload the page with content
-        window.location.href = '/admin?password=abc';
-      }
-    </script>
-  `;
-
-  // Only show the content after the password is verified on the client side
-  res.send(html);
-});
-
-// Admin Page (Content shown after password verification)
-app.get('/admin', (req, res) => {
-  const password = req.query.password;
-
-  if (password !== 'abc') {
-    return res.status(403).send('<h1>Forbidden</h1><p>Invalid password.</p>');
-  }
-
-  let html = `
-    <h1>Admin Page</h1>
     <h2>All URLs</h2>
     <table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>`;
 
+  // Generate the table of URLs
   for (let shortId in urlDatabase) {
     const entry = urlDatabase[shortId];
     html += `<tr>
@@ -72,6 +44,7 @@ app.get('/admin', (req, res) => {
 
   html += '</tbody></table>';
 
+  // Form for creating a custom short URL
   html += `
     <h2>Create Custom Short URL</h2>
     <form id="custom-short-form">
@@ -88,6 +61,14 @@ app.get('/admin', (req, res) => {
     <div id="custom-result"></div>
 
     <script>
+      // Prompt for password before loading admin page
+      const password = prompt("Enter the admin password:");
+
+      if (password !== 'abc') {
+        alert('Invalid password.');
+        window.location.href = '/';
+      }
+
       // Handle custom short URL creation
       document.getElementById('custom-short-form').addEventListener('submit', function(event) {
         event.preventDefault();
@@ -97,6 +78,7 @@ app.get('/admin', (req, res) => {
         const customUsername = document.getElementById('custom-username').value.trim();
         const customPassword = document.getElementById('custom-password').value.trim();
         
+        // Validate input
         if (!customShortId || !customOriginalUrl || !customUsername || !customPassword) {
           alert('Please fill all the fields!');
           return;
@@ -122,7 +104,9 @@ app.get('/admin', (req, res) => {
             document.getElementById('custom-result').innerHTML = 'Error: ' + data.error;
           }
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+          console.error('Error:', error);
+        });
       });
 
       function deleteUrl(shortId) {
@@ -141,6 +125,7 @@ app.get('/admin', (req, res) => {
 
   res.send(html);
 });
+
 
 
 
