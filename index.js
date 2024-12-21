@@ -23,34 +23,18 @@ app.get('/', (req, res) => {
 
 // Admin Route - Password Protected
 // Admin Route - Password Protected
-// Admin Route - Password Protected
-app.get('/admin', (req, res) => {
-  // Prompt for password before displaying the admin page content.
-  res.send(`
-    <script>
-      // Prompt for password before loading admin page
-      const password = prompt("Enter the admin password:");
-
-      if (password !== 'abc') {
-        // If password is incorrect, alert and redirect to home
-        alert('Invalid password.');
-        window.location.href = '/'; // Redirect to home if password is invalid
-      } else {
-        // Password is correct, fetch and display the admin content
-        window.location.href = '/admin/dashboard'; // Redirect to a separate route to show the admin dashboard
-      }
-    </script>
-  `);
-});
-
-// Admin Dashboard Route - Protected Content
 app.get('/admin/dashboard', (req, res) => {
-  // This route is only accessible after the password prompt is validated
+  // Check if the user is authenticated using the query parameter
+  const isAuthenticated = req.query.authenticated === 'true';
+
+  if (!isAuthenticated) {
+    return res.redirect('/admin'); // If not authenticated, redirect to login page
+  }
+
   let html = '<h1>Admin Dashboard</h1>';
   html += '<h2>All URLs</h2>';
   html += '<table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>';
 
-  // Populate the URLs in the database
   for (let shortId in urlDatabase) {
     const entry = urlDatabase[shortId];
     html += `<tr>
@@ -65,7 +49,6 @@ app.get('/admin/dashboard', (req, res) => {
 
   html += '</tbody></table>';
 
-  // Form for creating a custom short URL
   html += `
     <h2>Create Custom Short URL</h2>
     <form id="custom-short-form">
