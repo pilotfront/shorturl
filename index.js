@@ -23,10 +23,8 @@ app.get('/', (req, res) => {
 
 // Admin Route - Password Protected
 // Admin Route - Password Protected
-// Admin Route - Password Protected
-// Admin Route - Password Protected
-// Admin Route - Password Protected
 app.get('/admin', (req, res) => {
+  // Check if the password is provided as a query parameter
   let html = `
     <h1>Admin Page</h1>
     <p>Please enter the password to access the admin page.</p>
