@@ -22,17 +22,14 @@ app.get('/', (req, res) => {
 });
 
 // Admin Route - Password Protected
+// Admin Route - Password Protected
 app.get('/admin', (req, res) => {
-  const password = req.query.password;
+  let html = `
+    <h1>Admin Page</h1>
+    <h2>All URLs</h2>
+    <table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>`;
 
-  if (password !== 'abc') {
-    return res.status(403).send('<h1>Forbidden</h1><p>Invalid password.</p>');
-  }
-
-  let html = '<h1>Admin Page</h1>';
-  html += '<h2>All URLs</h2>';
-  html += '<table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>';
-
+  // Generate the table of URLs
   for (let shortId in urlDatabase) {
     const entry = urlDatabase[shortId];
     html += `<tr>
@@ -62,7 +59,16 @@ app.get('/admin', (req, res) => {
       <button type="submit">Create Custom Short URL</button>
     </form>
     <div id="custom-result"></div>
+
     <script>
+      // Prompt for password before loading admin page
+      const password = prompt("Enter the admin password:");
+
+      if (password !== 'abc') {
+        alert('Invalid password.');
+        window.location.href = '/';
+      }
+
       // Handle custom short URL creation
       document.getElementById('custom-short-form').addEventListener('submit', function(event) {
         event.preventDefault();
