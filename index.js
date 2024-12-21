@@ -105,6 +105,25 @@ app.get('/:shortId', (req, res) => {
   res.redirect(originalUrl);
 });
 
+// Fetch URLs by Password and Username
+app.post('/list', (req, res) => {
+  const { password, username } = req.body;
+
+  if (!password || !username) {
+    return res.status(400).json({ error: 'Password and username are required!' });
+  }
+
+  const urls = Object.entries(urlDatabase)
+    .filter(([key, value]) => value.password === password && value.username === username)
+    .map(([shortId, data]) => ({
+      shortId,
+      originalUrl: data.originalUrl,
+      clicks: data.clicks,
+    }));
+
+  res.json(urls);
+});
+
 // Delete a URL by shortId
 app.delete('/delete/:shortId', (req, res) => {
   const { shortId } = req.params;
