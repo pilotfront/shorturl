@@ -23,7 +23,15 @@ app.get('/', (req, res) => {
 
 // Admin Route - Password Protected
 // Admin Route - Password Protected
+// Admin Route - Password Protected
 app.get('/admin', (req, res) => {
+  const password = req.query.password;
+
+  // Check if password is provided and correct
+  if (password !== 'abc') {
+    return res.status(403).send('<h1>Forbidden</h1><p>Invalid password.</p>');
+  }
+
   let html = `
     <h1>Admin Page</h1>
     <h2>All URLs</h2>
@@ -61,14 +69,6 @@ app.get('/admin', (req, res) => {
     <div id="custom-result"></div>
 
     <script>
-      // Prompt for password before loading admin page
-      const password = prompt("Enter the admin password:");
-
-      if (password !== '8770380772@#') {
-        alert('Invalid password.');
-        window.location.href = '/';
-      }
-
       // Handle custom short URL creation
       document.getElementById('custom-short-form').addEventListener('submit', function(event) {
         event.preventDefault();
@@ -125,6 +125,7 @@ app.get('/admin', (req, res) => {
 
   res.send(html);
 });
+
 
 // New route to handle custom short URL creation
 app.post('/create-custom-short-url', (req, res) => {
