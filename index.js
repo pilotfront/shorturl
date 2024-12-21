@@ -24,101 +24,73 @@ app.get('/', (req, res) => {
 // Admin Route - Password Protected
 app.get('/admin', (req, res) => {
   const password = req.query.password;
-
   if (password !== 'abc') {
     return res.status(403).send('<h1>Forbidden</h1><p>Invalid password.</p>');
   }
 
-  let html = '<h1>Admin Page</h1>';
-  html += '<h2>All URLs</h2>';
-  html += '<table border="1"><thead><tr><th>Short URL</th><th>Original URL</th><th>Username</th><th>Password</th><th>Click Count</th><th>Delete</th></tr></thead><tbody>';
+  let html = `
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Admin Page</title>
+        <link rel="stylesheet" href="/admin.style.css"> <!-- Ensure correct path -->
+      </head>
+      <body>
+        <div class="container">
+          <h1 class="title">Admin Dashboard</h1>
+          <h2 class="subtitle">All URLs</h2>
+          <div class="url-list">
+            <table>
+              <thead>
+                <tr>
+                  <th>Short URL</th>
+                  <th>Original URL</th>
+                  <th>Username</th>
+                  <th>Password</th>
+                  <th>Click Count</th>
+                  <th>Delete</th>
+                </tr>
+              </thead>
+              <tbody>`;
 
   for (let shortId in urlDatabase) {
     const entry = urlDatabase[shortId];
-    html += `<tr>
-      <td><a href="https://${req.headers.host}/${shortId}" target="_blank">${shortId}</a></td>
-      <td><a href="${entry.originalUrl}" target="_blank">${entry.originalUrl}</a></td>
-      <td>${entry.username}</td>
-      <td>${entry.password}</td>
-      <td>${entry.clicks}</td>
-      <td><button onclick="deleteUrl('${shortId}')">Delete</button></td>
-    </tr>`;
+    html += `
+      <tr>
+        <td><a href="https://${req.headers.host}/${shortId}" target="_blank">${shortId}</a></td>
+        <td><a href="${entry.originalUrl}" target="_blank">${entry.originalUrl}</a></td>
+        <td>${entry.username}</td>
+        <td>${entry.password}</td>
+        <td>${entry.clicks}</td>
+        <td><button onclick="deleteUrl('${shortId}')">Delete</button></td>
+      </tr>`;
   }
 
-  html += '</tbody></table>';
-
-  // Form for creating a custom short URL
   html += `
-    <h2>Create Custom Short URL</h2>
-    <form id="custom-short-form">
-      <label for="custom-short-id">Custom Short ID:</label>
-      <input type="text" id="custom-short-id" required>
-      <label for="custom-original-url">Original URL:</label>
-      <input type="url" id="custom-original-url" required>
-      <label for="custom-username">Username:</label>
-      <input type="text" id="custom-username" required>
-      <label for="custom-password">Password:</label>
-      <input type="password" id="custom-password" required>
-      <button type="submit">Create Custom Short URL</button>
-    </form>
-    <div id="custom-result"></div>
-    <script>
-      // Handle custom short URL creation
-      document.getElementById('custom-short-form').addEventListener('submit', function(event) {
-        event.preventDefault();
-        
-        const customShortId = document.getElementById('custom-short-id').value.trim();
-        const customOriginalUrl = document.getElementById('custom-original-url').value.trim();
-        const customUsername = document.getElementById('custom-username').value.trim();
-        const customPassword = document.getElementById('custom-password').value.trim();
-        
-        // Validate input
-        if (!customShortId || !customOriginalUrl || !customUsername || !customPassword) {
-          alert('Please fill all the fields!');
-          return;
-        }
-        
-        fetch('/create-custom-short-url', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            shortId: customShortId,
-            originalUrl: customOriginalUrl,
-            username: customUsername,
-            password: customPassword,
-          }),
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.shortUrl) {
-            document.getElementById('custom-result').innerHTML = 'Custom Short URL Created: <a href="' + data.shortUrl + '" target="_blank">' + data.shortUrl + '</a>';
-          } else if (data.error) {
-            document.getElementById('custom-result').innerHTML = 'Error: ' + data.error;
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-        });
-      });
-
-      function deleteUrl(shortId) {
-        fetch('/delete/' + shortId, { method: 'DELETE' })
-          .then(response => response.json())
-          .then(data => {
-            if (data.message) {
-              alert(data.message);
-              window.location.reload();
+              </tbody>
+            </table>
+          </div>
+          <script>
+            function deleteUrl(shortId) {
+              fetch('/delete/' + shortId, { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                  if (data.message) {
+                    alert(data.message);
+                    window.location.reload();
+                  }
+                })
+                .catch(error => alert('Error deleting URL: ' + error));
             }
-          })
-          .catch(error => alert('Error deleting URL: ' + error));
-      }
-    </script>
-  `;
+          </script>
+        </div>
+      </body>
+    </html>`;
 
   res.send(html);
 });
+
 
 // New route to handle custom short URL creation
 app.post('/create-custom-short-url', (req, res) => {
