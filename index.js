@@ -88,8 +88,10 @@ app.post('/list', (req, res) => {
 // Admin Route to Fetch All URLs
 app.get('/admin/list', (req, res) => {
   const { password } = req.query;
+  console.log('Admin list accessed with password:', password);
 
   if (password !== ADMIN_PASSWORD) {
+    console.log('Invalid admin password:', password);
     return res.status(403).json({ error: 'Invalid admin password!' });
   }
 
@@ -101,8 +103,10 @@ app.get('/admin/list', (req, res) => {
     clicks: data.clicks,
   }));
 
+  console.log('Returning admin list:', allUrls);
   res.json(allUrls);
 });
+
 
 // Admin Route to Delete URLs
 app.delete('/admin/delete/:shortId', (req, res) => {
