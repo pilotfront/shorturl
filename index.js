@@ -21,85 +21,7 @@ app.get('/', (req, res) => {
   res.send('<h1>URL Shortener</h1><p>Use POST /shorten to create a short URL.</p>');
 });
 
-// Shorten a URL (existing functionality)
-app.post('/shorten', (req, res) => {
-  const { originalUrl, password, username } = req.body;
-
-  // Validate input
-  if (!originalUrl || !password || !username) {
-    return res.status(400).json({ error: 'You must provide a URL, password, and username!' });
-  }
-
-  // Generate short ID and save to database
-  const shortId = nanoid(6);
-  urlDatabase[shortId] = {
-    originalUrl,
-    password,
-    username,
-    clicks: 0,
-  };
-
-  res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
-});
-
-// Redirect to the original URL (existing functionality)
-app.get('/:shortId', (req, res) => {
-  const { shortId } = req.params;
-  const entry = urlDatabase[shortId];
-
-  // Check if the entry exists
-  if (!entry) {
-    return res.status(404).send('<h1>404 Not Found</h1>');
-  }
-
-  // Increment click count
-  entry.clicks++;
-
-  // Redirect to the original URL
-  const originalUrl = entry.originalUrl.startsWith('http') 
-    ? entry.originalUrl 
-    : `https://${entry.originalUrl}`;
-  
-  res.redirect(originalUrl);
-});
-
-// Fetch URLs by Password (existing functionality)
-app.post('/list', (req, res) => {
-  const { password, username } = req.body;
-
-  if (!password || !username) {
-    return res.status(400).json({ error: 'Password and username are required!' });
-  }
-
-  const urls = Object.entries(urlDatabase)
-    .filter(([key, value]) => value.password === password && value.username === username)
-    .map(([shortId, data]) => ({
-      shortId,
-      originalUrl: data.originalUrl,
-      username: data.username,
-      password: data.password,
-      clicks: data.clicks,
-    }));
-
-  res.json(urls);
-});
-
-// Delete a URL by shortId (existing functionality)
-app.delete('/delete/:shortId', (req, res) => {
-  const { shortId } = req.params;
-
-  // Check if the URL exists
-  if (!urlDatabase[shortId]) {
-    return res.status(404).json({ error: 'Short URL not found' });
-  }
-
-  // Delete the URL from the database
-  delete urlDatabase[shortId];
-
-  res.json({ message: 'URL deleted successfully' });
-});
-
-// Admin Route - Password Protected (new functionality)
+// Admin Route - Password Protected
 app.get('/admin', (req, res) => {
   const password = req.query.password;
 
@@ -198,7 +120,7 @@ app.get('/admin', (req, res) => {
   res.send(html);
 });
 
-// New route to handle custom short URL creation (new functionality)
+// New route to handle custom short URL creation
 app.post('/create-custom-short-url', (req, res) => {
   const { shortId, originalUrl, username, password } = req.body;
 
@@ -222,6 +144,83 @@ app.post('/create-custom-short-url', (req, res) => {
 
   // Respond with the newly created short URL
   res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
+});
+
+
+// Shorten a URL
+app.post('/shorten', (req, res) => {
+  const { originalUrl, password, username } = req.body;
+
+  // Validate input
+  if (!originalUrl || !password || !username) {
+    return res.status(400).json({ error: 'You must provide a URL, password, and username!' });
+  }
+
+  // Generate short ID and save to database
+  const shortId = nanoid(6);
+  urlDatabase[shortId] = {
+    originalUrl,
+    password,
+    username,
+    clicks: 0,
+  };
+
+  res.json({ shortUrl: `https://${req.headers.host}/${shortId}` });
+});
+
+// Redirect to the original URL
+app.get('/:shortId', (req, res) => {
+  const { shortId } = req.params;
+  const entry = urlDatabase[shortId];
+
+  // Check if the entry exists
+  if (!entry) {
+    return res.status(404).send('<h1>404 Not Found</h1>');
+  }
+
+  // Increment click count
+  entry.clicks++;
+
+  // Redirect to the original URL
+  const originalUrl = entry.originalUrl.startsWith('http') 
+    ? entry.originalUrl 
+    : `https://${entry.originalUrl}`;
+  
+  res.redirect(originalUrl);
+});
+
+// Fetch URLs by Password and Username
+app.post('/list', (req, res) => {
+  const { password, username } = req.body;
+
+  if (!password || !username) {
+    return res.status(400).json({ error: 'Password and username are required!' });
+  }
+
+  const urls = Object.entries(urlDatabase)
+    .filter(([key, value]) => value.password === password && value.username === username)
+    .map(([shortId, data]) => ({
+      shortId,
+      originalUrl: data.originalUrl,
+      clicks: data.clicks,
+    }));
+
+  res.json(urls);
+});
+
+// Delete a URL by shortId
+app.delete('/delete/:shortId', (req, res) => {
+  const { shortId } = req.params;
+
+  // Check if the URL exists
+  if (!urlDatabase[shortId]) {
+    return res.status(404).json({ error: 'Short URL not found' });
+  }
+
+  // Delete the URL from the database
+  delete urlDatabase[shortId];
+
+  res.json({ message: 'URL deleted successfully' });
 });
 
 // Start the server
